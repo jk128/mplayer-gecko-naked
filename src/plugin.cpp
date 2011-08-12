@@ -48,6 +48,13 @@
 #include <nsISupportsPrimitives.h>
 #include <dlfcn.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 static NPObject *sWindowObj;
 
 //#include "nsIServiceManager.h"
@@ -496,6 +503,35 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 
         argvn[arg] = NULL;
         playerready = FALSE;
+
+
+				FILE *fd;
+#ifdef ME
+				if ( (fd=fopen("/home/jacopo/gecko.log", "aw")) == NULL){
+#else 
+				if ( (fd=fopen("/root/gecko.log", "aw")) == NULL){
+#endif
+					perror("Unable to open/create file");
+				}
+
+				int app = 0;
+				int write_res=0;
+				while ( argvn[app] != NULL){
+					int app_len = strlen(argvn[app]);
+					gchar *appc = argvn[app];
+					while ( (appc - argvn[app]) < app_len){
+						if ( (write_res = fwrite((void *)appc, sizeof(gchar),
+										(size_t) app_len, fd)) < 0){
+							fclose(fd);
+							perror("Unable to write to log file");
+							exit(-1);
+						}
+						appc+=write_res;
+					}
+					app++;
+				}
+				fclose(fd);
+
         ok = g_spawn_async(NULL, argvn, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
 
         if (ok) {

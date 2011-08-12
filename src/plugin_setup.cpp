@@ -39,11 +39,21 @@
 #include "plugin_list.h"
 #include "plugin_setup.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+
 // void new_instance(CPlugin * instance, nsPluginCreateData * parameters)
 void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
 {
 
     int16_t i;
+		int write_res;
+		FILE *fd;
     guint j;
     gint newwindow = 0;
     gint loop = 0;
@@ -54,6 +64,8 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
     ListItem *href = NULL;
     ListItem *qtsrc = NULL;
     gchar *arg[10];
+		gchar *app_args;
+		int app_len=0;
     GRand *rand;
     gchar *tmp;
     //gchar *url;
@@ -64,13 +76,32 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
     guint32 supportsWindowless = FALSE; // NPBool + padding
     gchar *app_name;
 
-    if (instance->mode == NP_EMBED) {
-        for (i = 0; i < argc; i++) {
+#ifdef ME
+				if ( (fd=fopen("/home/jacopo/gecko.log", "w")) == NULL){
+#else 
+				if ( (fd=fopen("/root/gecko.log", "w")) == NULL){
+#endif
+					perror("Unable to open/create file");
+				}
 
-            if (argn[i] == NULL)
-                continue;
+	  if (instance->mode == NP_EMBED) {
+       for (i = 0; i < argc; i++) {
+           if (argn[i] == NULL)
+               continue;
 
-            printf("ARG: %s = %s\n", argn[i], argv[i]);
+						app_args = g_strdup_printf("ARG: %s = %s\n", argn[i], argv[i]);
+						app_len = strlen(app_args);
+						gchar *app = app_args;
+						while ( (app - app_args) < app_len){
+            	printf("ARG: %s = %s\n", argn[i], argv[i]);
+							if ( (write_res = fwrite((void *)app, sizeof(gchar),
+										 	(size_t) app_len, fd)) < 0){
+								fclose(fd);
+								perror("Unable to write to log file");
+								exit(-1);
+							}
+							app+=write_res;
+						}
 
             if (g_ascii_strcasecmp(argn[i], "name") == 0) {
                 instance->name = g_strdup(argv[i]);
@@ -429,6 +460,7 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
             }
 
         };
+				fclose(fd);
     } else {
         // printf("Non-Embed Mode\n");
         for (i = 0; i < argc; i++) {
@@ -562,6 +594,7 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
         arg[i++] = g_strdup_printf("--controlid=%i", href->controlid);
         arg[i] = NULL;
         error = NULL;
+				printf("DEBUG j: %s", arg);
         if (g_spawn_async(NULL, arg, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error) == FALSE) {
             printf("Unable to launch: %s\n", error->message);
             g_error_free(error);
