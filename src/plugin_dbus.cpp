@@ -318,10 +318,16 @@ static DBusHandlerResult filter_func(DBusConnection * connection,
                         postPlayStateChange(instance->mInstance, STATE_STOPPED);
                     }
                     if (g_ascii_strcasecmp(s, "MediaPlaying") == 0) {
-                        if (instance->post_dom_events && instance->id != NULL) {
-                            postDOMEvent(instance->mInstance, instance->id, "qt_play");
-                        }
-                        postPlayStateChange(instance->mInstance, STATE_PLAYING);
+											printf("media is playing!\n");
+											if(instance->show_fullscreen){
+												/*we are going fullscreen!*/
+												sleep(1);
+												send_signal_with_boolean(instance, item, "SetFullScreen", TRUE);
+											}
+                      if (instance->post_dom_events && instance->id != NULL) {
+                           postDOMEvent(instance->mInstance, instance->id, "qt_play");
+                      }
+                      postPlayStateChange(instance->mInstance, STATE_PLAYING);
                     }
                     if (g_ascii_strcasecmp(s, "MediaPaused") == 0) {
                         if (instance->post_dom_events && instance->id != NULL) {
@@ -652,7 +658,7 @@ void send_signal_with_boolean(CPlugin * instance, ListItem * item,
     const char *localsignal;
     gchar *path;
 
-    //printf("Sending %s to connection %p\n", signal, instance->connection);
+    printf("Sending %s to connection %p\n", signal, instance->connection);
     if (instance == NULL)
         return;
 

@@ -205,6 +205,7 @@ class CPlugin {
     gchar *user_agent;
     gchar *player_backend;
     gboolean quicktime_emulation;
+		gboolean show_fullscreen;
 
     // events
     gboolean post_dom_events;

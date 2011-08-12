@@ -135,6 +135,19 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
                     instance->show_controls = 0;
                 }
             }
+						/* check if window has to be started in fullscreen mode*/
+						if (g_ascii_strcasecmp(argn[i], "fullscreen") == 0) {
+                if (g_ascii_strcasecmp(argv[i], "true") == 0
+                    || g_ascii_strcasecmp(argv[i], "yes") == 0
+                    || g_ascii_strcasecmp(argv[i], "1") == 0) {
+									printf("go fullcreen\n");
+										instance->show_fullscreen = TRUE;
+								}else{
+									instance->show_fullscreen = FALSE;
+								}
+
+							
+						}
 
             if (g_ascii_strcasecmp(argn[i], "width") == 0) {
                 sscanf(argv[i], "%i", &width);

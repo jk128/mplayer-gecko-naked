@@ -55,6 +55,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 static NPObject *sWindowObj;
 
 //#include "nsIServiceManager.h"
@@ -197,7 +204,7 @@ m_pScriptableObjectMedia(NULL),
 m_pScriptableObjectSettings(NULL),
 m_pScriptableObjectError(NULL),
 mWindow(0),
-windowless(FALSE),
+windowless(TRUE),
 playlist(NULL),
 player_launched(FALSE),
 connection(NULL),
@@ -223,6 +230,7 @@ quicktime_emulation(FALSE),
 disable_context_menu(FALSE),
 disable_fullscreen(FALSE),
 post_dom_events(FALSE),
+show_fullscreen(FALSE),
 event_mediacomplete(NULL),
 event_destroy(NULL),
 event_mousedown(NULL),
@@ -551,6 +559,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
     }
 
     if (playlist != NULL) {
+			printf("PlayList != NULL\n");
         item = (ListItem *) playlist->data;
         if (item && !item->play)
             item = list_find_next_playable(playlist);
@@ -1087,7 +1096,6 @@ void CPlugin::Play()
         postDOMEvent(mInstance, this->id, "qt_play");
     }
 }
-
 void CPlugin::Pause()
 {
     send_signal(this, this->lastopened, "Pause");
@@ -1135,6 +1143,7 @@ void CPlugin::SetVolume(double value)
         postDOMEvent(mInstance, this->id, "qt_volumechange");
     }
 }
+
 
 void CPlugin::GetVolume(double *_retval)
 {
@@ -1549,9 +1558,9 @@ gpointer CURLGetURLNotify(gpointer data)
                 plugin->playlist = list_parse_qml(plugin->playlist, item);
                 plugin->playlist = list_parse_ram(plugin->playlist, item);
             }
-            // printf("item->play = %i\n", item->play);
-            // printf("item->src = %i\n", item->src);
-            // printf("calling open_location from Write\n");
+             printf("item->play = %i\n", item->play);
+             printf("item->src = %i\n", item->src);
+             printf("calling open_location from Write\n");
             if (item->play) {
                 send_signal_with_integer(plugin, item, "SetGUIState", PLAYING);
                 open_location(plugin, item, TRUE);
@@ -1569,7 +1578,7 @@ gpointer CURLGetURLNotify(gpointer data)
                     item->playerready = ready;
                     item->newwindow = newwindow;
                     item->cancelled = FALSE;
-                    // printf("opening next playable items on the playlist\n");
+                     printf("opening next playable items on the playlist\n");
                     if (item->streaming) {
                         open_location(plugin, item, FALSE);
                         item->requested = TRUE;
