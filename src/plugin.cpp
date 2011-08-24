@@ -364,7 +364,7 @@ tv_driver(NULL), tv_device(NULL), tv_input(NULL), tv_width(0), tv_height(0)
 
 
     if (connection == NULL) {
-        connection = dbus_hookup(this);
+    //    connection = dbus_hookup(this);
     }
     pluginSpecific(this);
 
@@ -468,18 +468,21 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
             app_name = g_find_program_in_path(player_backend);
         }
         if (app_name == NULL) {
-            app_name = g_find_program_in_path("gnome-mplayer");
+            app_name = g_strdup_printf("mplayer");// g_find_program_in_path("gnome-mplayer");
             if (app_name == NULL)
                 app_name = g_find_program_in_path("gnome-mplayer-minimal");
         }
 
-        argvn[arg++] = g_strdup_printf("%s", app_name);
-        argvn[arg++] = g_strdup_printf("--window=%i", (gint) mWindow);
-        argvn[arg++] = g_strdup_printf("--controlid=%i", controlid);
-        argvn[arg++] = g_strdup_printf("--width=%i", mWidth);
-        argvn[arg++] = g_strdup_printf("--height=%i", mHeight);
-        argvn[arg++] = g_strdup_printf("--autostart=%i", autostart);
-        argvn[arg++] = g_strdup_printf("--showcontrols=%i", show_controls);
+	  argvn[arg++] = g_strdup_printf("%s", app_name);
+
+#if 0
+       argvn[arg++] = g_strdup_printf("--window=%i", (gint) mWindow);
+       argvn[arg++] = g_strdup_printf("--controlid=%i", controlid);
+       argvn[arg++] = g_strdup_printf("--width=%i", mWidth);
+       argvn[arg++] = g_strdup_printf("--height=%i", mHeight);
+       argvn[arg++] = g_strdup_printf("--autostart=%i", autostart);
+       argvn[arg++] = g_strdup_printf("--showcontrols=%i", show_controls);
+
         if (disable_context_menu == TRUE)
             argvn[arg++] = g_strdup_printf("--disablecontextmenu");
         if (disable_fullscreen == TRUE)
@@ -499,7 +502,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
         if (tv_driver != NULL) {
             argvn[arg++] = g_strdup_printf("--tvdriver=%s", tv_driver);
         }
-        if (tv_input != NULL) {
+				)if (tv_input != NULL) {
             argvn[arg++] = g_strdup_printf("--tvinput=%s", tv_input);
         }
         if (tv_width > 0) {
@@ -508,20 +511,30 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
         if (tv_height > 0) {
             argvn[arg++] = g_strdup_printf("--tvheight=%i", tv_height);
         }
+#endif
+		//		argvn[arg++] = g_strdup_printf(" rtsp://192.168.10.200:7070/multicast/track1");
+
+				argvn[arg++] = g_strdup_printf("-v"); 
+				argvn[arg++] = g_strdup_printf("-slave"); 
+				argvn[arg++] = g_strdup_printf("-input");  
+				argvn[arg++] = g_strdup_printf("file=/tmp/fifo");
+				argvn[arg++] = g_strdup_printf("-idle");
+//				argvn[arg++] = g_strdup_printf(" rtsp://192.168.10.200:7070/multicast/track1");
+				argvn[arg++] = g_strdup_printf("-wid");
+			 	argvn[arg++] = g_strdup_printf("%i", (gint) mWindow); 
+				argvn[arg++] = g_strdup_printf("-fs");
 
         argvn[arg] = NULL;
         playerready = FALSE;
 
 
 				FILE *fd;
-#ifdef ME
 				if ( (fd=fopen("/home/jacopo/gecko.log", "aw")) == NULL){
-#else 
-				if ( (fd=fopen("/root/gecko.log", "aw")) == NULL){
-#endif
 					perror("Unable to open/create file");
 				}
 
+				printf("\n\n %i \n\n", (gint) mWindow);
+				printf("\n");
 				int app = 0;
 				int write_res=0;
 				while ( argvn[app] != NULL){
@@ -534,14 +547,21 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 							perror("Unable to write to log file");
 							exit(-1);
 						}
+						printf("%s",appc);
 						appc+=write_res;
 					}
 					app++;
 				}
 				fclose(fd);
+				printf("\n");
+				playlist = NULL;
 
-        ok = g_spawn_async(NULL, argvn, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
+//        ok =execv("/usr/bin/mplayer","/usr/bin/mplayer","-v","-vo", "xv","-slave", "-input", "file=/tmp/fifo","-idle", "-wid",g_strdup_printf("%i", (gint) mWindow),(char *) NULL); //g_spawn_async(NULL, argvn, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
+        //ok =execl("/usr/bin/mplayer","/usr/bin/mplayer","-v", "-vo", "x11", "-slave", "-input", "file=/tmp/fifo","-idle", "-wid"," 100663324" /*g_strdup_printf("%i", (gint) mWindow)*/,(char *) NULL); 
+			g_spawn_async(NULL, argvn, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
+		}
 
+#if 0
         if (ok) {
             player_launched = TRUE;
         } else {
@@ -576,6 +596,8 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
             }
         }
     }
+
+#endif
     return NPERR_NO_ERROR;
 }
 
