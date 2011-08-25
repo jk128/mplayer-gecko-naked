@@ -54,13 +54,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <errno.h>
 
 static NPObject *sWindowObj;
 
@@ -71,6 +67,7 @@ static NPObject *sWindowObj;
 #define PLUGIN_NAME         "Scriptable Example Plugin for Mozilla"
 #define MIME_TYPES_DESCRIPTION  MIME_TYPES_HANDLED":scr:"PLUGIN_NAME
 #define PLUGIN_DESCRIPTION  PLUGIN_NAME " (Plug-ins SDK sample)"
+#define MPLAYER_PIPE_PATH "/tmp/mplayer_fifo"
 
 int32 STREAMBUFSIZE = 0X0FFFFFFF;
 
@@ -241,6 +238,9 @@ tv_driver(NULL), tv_device(NULL), tv_input(NULL), tv_width(0), tv_height(0)
     GRand *rand;
     GmPrefStore *store;
     gboolean b;
+		struct stat *buf;
+		const gchar *gcharset;
+		GError *charset_error;
 
     NPN_GetValue(mInstance, NPNVWindowNPObject, &sWindowObj);
 
@@ -361,7 +361,34 @@ tv_driver(NULL), tv_device(NULL), tv_input(NULL), tv_width(0), tv_height(0)
         printf("Using player backend of '%s'\n", player_backend);
         gm_pref_store_free(store);
     }
+		
+		this->pipe_ready = 1;
+		/* open pipe for mplayer */
+		if (mkfifo(MPLAYER_PIPE_PATH, S_IRWXU) < 0){
+			perror("MKfifo");
+			this->pipe_ready = 0;
+		}
+		printf("pipe created\n");
+		if ( (this->mplayer_pipe = 
+					open(MPLAYER_PIPE_PATH,O_RDWR)) < 0 ){
+			perror("OpenFIFO");
+			this->pipe_ready = 0;
+		}
+		this->mplayer_gio_channel =  g_io_channel_unix_new(this->mplayer_pipe);
+		if (!this->mplayer_gio_channel){
+			perror("Cannot Create GIOChannel");
+			this->pipe_ready = 0;
+		}
 
+		/*set GIOChanell character encoding*/
+		if( ! g_get_charset(&gcharset)){
+			//encoding is not UTF8
+			if (g_io_channel_set_encoding (
+					this->mplayer_gio_channel, gcharset,&charset_error) != G_IO_STATUS_NORMAL){
+				perror("Unable to set encoding");
+				this->pipe_ready = 0;
+			}
+		}
 
     if (connection == NULL) {
     //    connection = dbus_hookup(this);
@@ -518,7 +545,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				argvn[arg++] = g_strdup_printf("-v"); 
 				argvn[arg++] = g_strdup_printf("-slave"); 
 				argvn[arg++] = g_strdup_printf("-input");  
-				argvn[arg++] = g_strdup_printf("file=/tmp/fifo");
+				argvn[arg++] = g_strdup_printf("file=%s", MPLAYER_PIPE_PATH);
 				argvn[arg++] = g_strdup_printf("-idle");
 				if (this->show_fullscreen){
 					printf("GO FULLSCREEN\n\n");
@@ -639,6 +666,10 @@ void CPlugin::shut()
     if (event_destroy != NULL) {
         NPN_GetURL(mInstance, event_destroy, NULL);
     }
+
+		g_io_channel_unref(this->mplayer_gio_channel);
+		g_io_channel_close(this->mplayer_gio_channel);
+		close(this->mplayer_pipe);
 
     if (connection != NULL) {
         connection = dbus_unhook(connection, this);
