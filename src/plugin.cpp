@@ -365,8 +365,10 @@ tv_driver(NULL), tv_device(NULL), tv_input(NULL), tv_width(0), tv_height(0)
 		this->pipe_ready = 1;
 		/* open pipe for mplayer */
 		if (mkfifo(MPLAYER_PIPE_PATH, S_IRWXU) < 0){
-			perror("MKfifo");
-			this->pipe_ready = 0;
+			if (errno != EEXIST ){
+				perror("MKfifo");
+				this->pipe_ready = 0;
+			}
 		}
 		printf("pipe created\n");
 		if ( (this->mplayer_pipe = 
@@ -495,9 +497,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
             app_name = g_find_program_in_path(player_backend);
         }
         if (app_name == NULL) {
-            app_name = g_strdup_printf("mplayer");// g_find_program_in_path("gnome-mplayer");
-            if (app_name == NULL)
-                app_name = g_find_program_in_path("gnome-mplayer-minimal");
+            app_name =  g_find_program_in_path("mplayer");
         }
 
 	  argvn[arg++] = g_strdup_printf("%s", app_name);
@@ -555,7 +555,6 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					argvn[arg++] = g_strdup_printf("-wid");
 					argvn[arg++] = g_strdup_printf("%i", (gint) mWindow); 
 				}
-//				argvn[arg++] = g_strdup_printf(" rtsp://192.168.10.200:7070/multicast/track1");
 
 
         argvn[arg] = NULL;
@@ -592,24 +591,10 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				}
 				fclose(fd);
 				printf("\n");
-				playlist = NULL;
+				//playlist = NULL;
 
-//        ok =execv("/usr/bin/mplayer","/usr/bin/mplayer","-v","-vo", "xv","-slave", "-input", "file=/tmp/fifo","-idle", "-wid",g_strdup_printf("%i", (gint) mWindow),(char *) NULL); //g_spawn_async(NULL, argvn, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
-        //ok =execl("/usr/bin/mplayer","/usr/bin/mplayer","-v", "-vo", "x11", "-slave", "-input", "file=/tmp/fifo","-idle", "-wid"," 100663324" /*g_strdup_printf("%i", (gint) mWindow)*/,(char *) NULL); 
-			g_spawn_async(NULL, argvn, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
-		}
-		gsize *size;
-		GError *err;
-		char *command = g_strdup_printf("loadfile rtsp://192.168.10.200:7070/multicast/track1\n");
-		printf("Writing %s, size %d to channel\n", command, strlen(command));
-//	int i = g_io_channel_write_chars(this->mplayer_gio_channel, command, strlen(command), size, &err);
-		int i = write(this->mplayer_pipe, command, strlen(command));
-
-		if (i < 0 )
-			perror("channel write");
-
-
-#if 0
+				ok = g_spawn_async(NULL, argvn, NULL,
+					 	G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
         if (ok) {
             player_launched = TRUE;
         } else {
@@ -619,33 +604,29 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
         }
 
         g_free(app_name);
+		}
 
-        if (post_dom_events && id != NULL) {
-            postDOMEvent(mInstance, id, "qt_begin");
-        }
-        //postPlayStateChange(mInstance, STATE_READY);
-    }
 
-    if (playlist != NULL) {
-			printf("PlayList != NULL\n");
-        item = (ListItem *) playlist->data;
-        if (item && !item->play)
+	  if (this->pipe_ready){
+			printf("PIPE READY\n");
+			if (playlist != NULL){
+			printf("PLAYLIST READY\n");
+				 item = (ListItem *) playlist->data;
+				  if (item && !item->play)
             item = list_find_next_playable(playlist);
-        if (item && !item->requested) {
-            item->cancelled = FALSE;
-            if (item->streaming) {
-                printf("Calling open_location with item = %p src = %s\n", item, item->src);
-                open_location(this, item, FALSE);
-                item->requested = 1;
-            } else {
-                item->requested = 1;
-                printf("Calling GetURLNotify with item = %p src = %s\n", item, item->src);
-                this->GetURLNotify(mInstance, item->src, NULL, item);
-            }
-        }
-    }
+					char *command = 
+						g_strdup_printf("loadfile %s\n\0", item->src);
 
-#endif
+					printf("Writing %s, size %d to channel\n", command, strlen(command));
+					if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
+						perror("channel write");
+	  	} 
+			else
+				printf("no item in playlist\n");
+		}
+		else
+			printf("no pipe available\n");
+
     return NPERR_NO_ERROR;
 }
 
@@ -654,6 +635,7 @@ void CPlugin::shut()
 {
     ListItem *item;
     GList *iter;
+		char *command = g_strdup_printf("stop\n\0");
 
     acceptdata = FALSE;
     mInitialized = FALSE;
@@ -663,19 +645,22 @@ void CPlugin::shut()
             item = (ListItem *) iter->data;
             if (item != NULL) {
                 item->cancelled = TRUE;
-                if (item->controlid != 0) {
-                    send_signal_when_ready(this, item, "Terminate");
-                }
             }
         }
     }
-    send_signal_when_ready(this, NULL, "Terminate");
     playerready = FALSE;
     playlist = list_clear(playlist);
 
     if (event_destroy != NULL) {
         NPN_GetURL(mInstance, event_destroy, NULL);
     }
+
+		/*tell mplayer to stop playback and then exit*/
+		if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
+						perror("channel write");
+		command = g_strdup_printf("quit\n\0");
+		if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
+						perror("channel write");
 
 		g_io_channel_unref(this->mplayer_gio_channel);
 		g_io_channel_close(this->mplayer_gio_channel);
