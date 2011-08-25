@@ -598,6 +598,16 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
         //ok =execl("/usr/bin/mplayer","/usr/bin/mplayer","-v", "-vo", "x11", "-slave", "-input", "file=/tmp/fifo","-idle", "-wid"," 100663324" /*g_strdup_printf("%i", (gint) mWindow)*/,(char *) NULL); 
 			g_spawn_async(NULL, argvn, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
 		}
+		gsize *size;
+		GError *err;
+		char *command = g_strdup_printf("loadfile rtsp://192.168.10.200:7070/multicast/track1\n");
+		printf("Writing %s, size %d to channel\n", command, strlen(command));
+//	int i = g_io_channel_write_chars(this->mplayer_gio_channel, command, strlen(command), size, &err);
+		int i = write(this->mplayer_pipe, command, strlen(command));
+
+		if (i < 0 )
+			perror("channel write");
+
 
 #if 0
         if (ok) {
