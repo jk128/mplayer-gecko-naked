@@ -363,8 +363,11 @@ tv_driver(NULL), tv_device(NULL), tv_input(NULL), tv_width(0), tv_height(0)
     }
 		
 		this->pipe_ready = 1;
+		/*create pipe name*/
+		this->pipe_name = g_strdup_printf("%s%d", MPLAYER_PIPE_PATH,controlid);
+		printf("PIPE NAME: %s\n", this->pipe_name);
 		/* open pipe for mplayer */
-		if (mkfifo(MPLAYER_PIPE_PATH, S_IRWXU) < 0){
+		if (mkfifo(this->pipe_name, S_IRWXU) < 0){
 			if (errno != EEXIST ){
 				perror("MKfifo");
 				this->pipe_ready = 0;
@@ -372,7 +375,7 @@ tv_driver(NULL), tv_device(NULL), tv_input(NULL), tv_width(0), tv_height(0)
 		}
 		printf("pipe created\n");
 		if ( (this->mplayer_pipe = 
-					open(MPLAYER_PIPE_PATH,O_RDWR)) < 0 ){
+					open(this->pipe_name,O_RDWR)) < 0 ){
 			perror("OpenFIFO");
 			this->pipe_ready = 0;
 		}
@@ -492,121 +495,81 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
     }
 
     if (!player_launched && mWidth > 0 && mHeight > 0) {
-        app_name = NULL;
-        if (player_backend != NULL) {
-            app_name = g_find_program_in_path(player_backend);
-        }
-        if (app_name == NULL) {
-            app_name =  g_find_program_in_path("mplayer");
-        }
+			app_name = NULL;
+			if (player_backend != NULL) {
+					app_name = g_find_program_in_path(player_backend);
+			}
+			if (app_name == NULL) {
+					app_name =  g_find_program_in_path("mplayer");
+			}
 
-	  argvn[arg++] = g_strdup_printf("%s", app_name);
+	  	argvn[arg++] = g_strdup_printf("%s", app_name);
 
-#if 0
-       argvn[arg++] = g_strdup_printf("--window=%i", (gint) mWindow);
-       argvn[arg++] = g_strdup_printf("--controlid=%i", controlid);
-       argvn[arg++] = g_strdup_printf("--width=%i", mWidth);
-       argvn[arg++] = g_strdup_printf("--height=%i", mHeight);
-       argvn[arg++] = g_strdup_printf("--autostart=%i", autostart);
-       argvn[arg++] = g_strdup_printf("--showcontrols=%i", show_controls);
-
-        if (disable_context_menu == TRUE)
-            argvn[arg++] = g_strdup_printf("--disablecontextmenu");
-        if (disable_fullscreen == TRUE)
-            argvn[arg++] = g_strdup_printf("--disablefullscreen");
-        if (debug == TRUE)
-            argvn[arg++] = g_strdup_printf("--verbose");
-        if (name != NULL)
-            argvn[arg++] = g_strdup_printf("--rpname=%s", name);
-        if (console != NULL)
-            argvn[arg++] = g_strdup_printf("--rpconsole=%s", console);
-        if (controls != NULL) {
-            argvn[arg++] = g_strdup_printf("--rpcontrols=%s", controls);
-        }
-        if (tv_device != NULL) {
-            argvn[arg++] = g_strdup_printf("--tvdevice=%s", tv_device);
-        }
-        if (tv_driver != NULL) {
-            argvn[arg++] = g_strdup_printf("--tvdriver=%s", tv_driver);
-        }
-				)if (tv_input != NULL) {
-            argvn[arg++] = g_strdup_printf("--tvinput=%s", tv_input);
-        }
-        if (tv_width > 0) {
-            argvn[arg++] = g_strdup_printf("--tvwidth=%i", tv_width);
-        }
-        if (tv_height > 0) {
-            argvn[arg++] = g_strdup_printf("--tvheight=%i", tv_height);
-        }
-
-		//		argvn[arg++] = g_strdup_printf(" rtsp://192.168.10.200:7070/multicast/track1");
-#endif
-
-				argvn[arg++] = g_strdup_printf("-v"); 
-				argvn[arg++] = g_strdup_printf("-slave"); 
-				argvn[arg++] = g_strdup_printf("-input");  
-				argvn[arg++] = g_strdup_printf("file=%s", MPLAYER_PIPE_PATH);
-				argvn[arg++] = g_strdup_printf("-idle");
-				if (this->show_fullscreen){
-					printf("GO FULLSCREEN\n\n");
-					argvn[arg++] = g_strdup_printf("-fs");
-				}
-				else{
-					argvn[arg++] = g_strdup_printf("-wid");
-					argvn[arg++] = g_strdup_printf("%i", (gint) mWindow); 
-				}
+			argvn[arg++] = g_strdup_printf("-v"); 
+			argvn[arg++] = g_strdup_printf("-slave"); 
+			argvn[arg++] = g_strdup_printf("-input");  
+			argvn[arg++] = g_strdup_printf("file=%s", this->pipe_name);
+			argvn[arg++] = g_strdup_printf("-idle");
+			if (this->show_fullscreen){
+				printf("GO FULLSCREEN\n\n");
+				argvn[arg++] = g_strdup_printf("-fs");
+			}
+			else{
+				argvn[arg++] = g_strdup_printf("-wid");
+				argvn[arg++] = g_strdup_printf("%i", (gint) mWindow); 
+			}
 
 
-        argvn[arg] = NULL;
-        playerready = FALSE;
+			argvn[arg] = NULL;
+			playerready = FALSE;
 
 
-				FILE *fd;
+			FILE *fd;
 #ifdef ME
-				if ( (fd=fopen("/home/jacopo/gecko.log", "w")) == NULL){
+			if ( (fd=fopen("/home/jacopo/gecko.log", "w")) == NULL){
 #else 
-				if ( (fd=fopen("/root/gecko.log", "w")) == NULL){
+			if ( (fd=fopen("/root/gecko.log", "w")) == NULL){
 #endif
-					perror("Unable to open/create file");
-				}
+				perror("Unable to open/create file");
+			}
 
-				printf("\n\n %i \n\n", (gint) mWindow);
-				printf("\n");
-				int app = 0;
-				int write_res=0;
-				while ( argvn[app] != NULL){
-					int app_len = strlen(argvn[app]);
-					gchar *appc = argvn[app];
-					while ( (appc - argvn[app]) < app_len){
-						if ( (write_res = fwrite((void *)appc, sizeof(gchar),
-										(size_t) app_len, fd)) < 0){
-							fclose(fd);
-							perror("Unable to write to log file");
-							exit(-1);
-						}
-						printf("%s",appc);
-						appc+=write_res;
+			printf("\n\n %i \n\n", (gint) mWindow);
+			printf("\n");
+			int app = 0;
+			int write_res=0;
+			while ( argvn[app] != NULL){
+				int app_len = strlen(argvn[app]);
+				gchar *appc = argvn[app];
+				while ( (appc - argvn[app]) < app_len){
+					if ( (write_res = fwrite((void *)appc, sizeof(gchar),
+									(size_t) app_len, fd)) < 0){
+						fclose(fd);
+						perror("Unable to write to log file");
+						exit(-1);
 					}
-					app++;
+					printf("%s",appc);
+					appc+=write_res;
 				}
-				fclose(fd);
-				printf("\n");
-				//playlist = NULL;
+				app++;
+			}
+			fclose(fd);
+			printf("\n");
+			//playlist = NULL;
 
-				ok = g_spawn_async(NULL, argvn, NULL,
-					 	G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
-        if (ok) {
-            player_launched = TRUE;
-        } else {
-            printf("Unable to launch %s: %s\n", app_name, error->message);
-            g_error_free(error);
-            error = NULL;
-        }
-
-        g_free(app_name);
+			ok = g_spawn_async(NULL, argvn, NULL,
+					G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
+			if (ok) {
+					player_launched = TRUE;
+			} else {
+					printf("Unable to launch %s: %s\n", app_name, error->message);
+					g_error_free(error);
+					error = NULL;
+			}
+			g_free(app_name);
 		}
 
 
+		/*Start playback*/
 	  if (this->pipe_ready){
 			printf("PIPE READY\n");
 			if (playlist != NULL){
@@ -665,6 +628,9 @@ void CPlugin::shut()
 		g_io_channel_unref(this->mplayer_gio_channel);
 		g_io_channel_close(this->mplayer_gio_channel);
 		close(this->mplayer_pipe);
+
+		/*delete pipe from filesystem*/
+		unlink(this->pipe_name);
 
     if (connection != NULL) {
         connection = dbus_unhook(connection, this);

@@ -206,9 +206,12 @@ class CPlugin {
     gchar *player_backend;
     gboolean quicktime_emulation;
 		gboolean show_fullscreen;
+		
+		/*mplayer control pipe*/
 		gint mplayer_pipe;
 		GIOChannel *mplayer_gio_channel;
 		gboolean pipe_ready;
+		gchar *pipe_name;
 
     // events
     gboolean post_dom_events;
