@@ -511,25 +511,36 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
         if (tv_height > 0) {
             argvn[arg++] = g_strdup_printf("--tvheight=%i", tv_height);
         }
-#endif
+
 		//		argvn[arg++] = g_strdup_printf(" rtsp://192.168.10.200:7070/multicast/track1");
+#endif
 
 				argvn[arg++] = g_strdup_printf("-v"); 
 				argvn[arg++] = g_strdup_printf("-slave"); 
 				argvn[arg++] = g_strdup_printf("-input");  
 				argvn[arg++] = g_strdup_printf("file=/tmp/fifo");
 				argvn[arg++] = g_strdup_printf("-idle");
+				if (this->show_fullscreen){
+					printf("GO FULLSCREEN\n\n");
+					argvn[arg++] = g_strdup_printf("-fs");
+				}
+				else{
+					argvn[arg++] = g_strdup_printf("-wid");
+					argvn[arg++] = g_strdup_printf("%i", (gint) mWindow); 
+				}
 //				argvn[arg++] = g_strdup_printf(" rtsp://192.168.10.200:7070/multicast/track1");
-				argvn[arg++] = g_strdup_printf("-wid");
-			 	argvn[arg++] = g_strdup_printf("%i", (gint) mWindow); 
-				argvn[arg++] = g_strdup_printf("-fs");
+
 
         argvn[arg] = NULL;
         playerready = FALSE;
 
 
 				FILE *fd;
-				if ( (fd=fopen("/home/jacopo/gecko.log", "aw")) == NULL){
+#ifdef ME
+				if ( (fd=fopen("/home/jacopo/gecko.log", "w")) == NULL){
+#else 
+				if ( (fd=fopen("/root/gecko.log", "w")) == NULL){
+#endif
 					perror("Unable to open/create file");
 				}
 

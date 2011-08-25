@@ -2,7 +2,7 @@
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
 /* Define to 1 if you have curl support */
-#define CURL_ENABLED 1
+/* #undef CURL_ENABLED */
 
 /* always defined to indicate that i18n is enabled */
 #define ENABLE_NLS 1
@@ -41,7 +41,7 @@
 #define HAVE_MEMORY_H 1
 
 /* Define to 1 if using libxul 1.9.2 or higher */
-#define HAVE_NEW_XULRUNNER 1
+/* #undef HAVE_NEW_XULRUNNER */
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
