@@ -64,7 +64,7 @@ typedef struct _ListItem {
     gint lastsize;
     FILE *localfp;
     gboolean loop;              // TRUE if we should loop
-    gint loopcount;             // 0 - loop done, -1 loop forever
+    gint loopcount;             // 1 infinite 
     gint bitrate;
     gint bitrate_requests;
     void *plugin;

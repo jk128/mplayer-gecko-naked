@@ -379,21 +379,6 @@ tv_driver(NULL), tv_device(NULL), tv_input(NULL), tv_width(0), tv_height(0)
 			perror("OpenFIFO");
 			this->pipe_ready = 0;
 		}
-		this->mplayer_gio_channel =  g_io_channel_unix_new(this->mplayer_pipe);
-		if (!this->mplayer_gio_channel){
-			perror("Cannot Create GIOChannel");
-			this->pipe_ready = 0;
-		}
-
-		/*set GIOChanell character encoding*/
-		if( ! g_get_charset(&gcharset)){
-			//encoding is not UTF8
-			if (g_io_channel_set_encoding (
-					this->mplayer_gio_channel, gcharset,&charset_error) != G_IO_STATUS_NORMAL){
-				perror("Unable to set encoding");
-				this->pipe_ready = 0;
-			}
-		}
 
     if (connection == NULL) {
     //    connection = dbus_hookup(this);
@@ -490,10 +475,6 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
     }
 
 
-    if (player_launched && mWidth > 0 && mHeight > 0) {
-        resize_window(this, NULL, mWidth, mHeight);
-    }
-
     if (!player_launched && mWidth > 0 && mHeight > 0) {
 			app_name = NULL;
 			if (player_backend != NULL) {
@@ -505,11 +486,15 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 
 	  	argvn[arg++] = g_strdup_printf("%s", app_name);
 
-			argvn[arg++] = g_strdup_printf("-v"); 
+			argvn[arg++] = g_strdup_printf("-profile"); 
+			argvn[arg++] = g_strdup_printf("qubica"); 
+
 			argvn[arg++] = g_strdup_printf("-slave"); 
 			argvn[arg++] = g_strdup_printf("-input");  
 			argvn[arg++] = g_strdup_printf("file=%s", this->pipe_name);
 			argvn[arg++] = g_strdup_printf("-idle");
+			argvn[arg++] = g_strdup_printf("-nograbpointer");
+			argvn[arg++] = g_strdup_printf("-nomouseinput");
 			if (this->show_fullscreen){
 				printf("GO FULLSCREEN\n\n");
 				argvn[arg++] = g_strdup_printf("-fs");
@@ -518,12 +503,11 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				argvn[arg++] = g_strdup_printf("-wid");
 				argvn[arg++] = g_strdup_printf("%i", (gint) mWindow); 
 			}
-
-
 			argvn[arg] = NULL;
 			playerready = FALSE;
 
-
+			printf("\n %i \n", (gint) mWindow);
+			/* Log to file*/
 			FILE *fd;
 #ifdef ME
 			if ( (fd=fopen("/home/jacopo/gecko.log", "w")) == NULL){
@@ -533,8 +517,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				perror("Unable to open/create file");
 			}
 
-			printf("\n\n %i \n\n", (gint) mWindow);
-			printf("\n");
+
 			int app = 0;
 			int write_res=0;
 			while ( argvn[app] != NULL){
@@ -553,9 +536,8 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				app++;
 			}
 			fclose(fd);
-			printf("\n");
-			//playlist = NULL;
 
+			/* Launch Mplayer*/
 			ok = g_spawn_async(NULL, argvn, NULL,
 					G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
 			if (ok) {
@@ -566,30 +548,39 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					error = NULL;
 			}
 			g_free(app_name);
-		}
 
+			/*Start playback */
+			if (this->pipe_ready){
+				printf("PIPE READY\n");
+				if (playlist != NULL){
+					printf("PLAYLIST READY\n");
 
-		/*Start playback*/
-	  if (this->pipe_ready){
-			printf("PIPE READY\n");
-			if (playlist != NULL){
-			printf("PLAYLIST READY\n");
-				 item = (ListItem *) playlist->data;
-				  if (item && !item->play)
-            item = list_find_next_playable(playlist);
+					item = (ListItem *) playlist->data;
+					if (item && !item->play)
+						item = list_find_next_playable(playlist);
+
 					char *command = 
 						g_strdup_printf("loadfile %s\n\0", item->src);
-
 					printf("Writing %s, size %d to channel\n", command, strlen(command));
 					if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
 						perror("channel write");
-	  	} 
-			else
-				printf("no item in playlist\n");
-		}
-		else
-			printf("no pipe available\n");
 
+					if (item->loop){
+						command =
+							g_strdup_printf("loop %i\n\0", item->loopcount);
+						printf("Writing %s, size %d to channel\n", command, strlen(command));
+						if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
+							perror("channel write");
+					} 
+
+				}	
+				else
+					printf("no item in playlist\n");
+			}
+			else
+				printf("no pipe available\n");
+
+		}
     return NPERR_NO_ERROR;
 }
 
@@ -624,12 +615,10 @@ void CPlugin::shut()
 		command = g_strdup_printf("quit\n\0");
 		if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
 						perror("channel write");
-
-		g_io_channel_unref(this->mplayer_gio_channel);
-		g_io_channel_close(this->mplayer_gio_channel);
 		close(this->mplayer_pipe);
 
 		/*delete pipe from filesystem*/
+		printf("\n\nSHUT\n\n");
 		unlink(this->pipe_name);
 
     if (connection != NULL) {

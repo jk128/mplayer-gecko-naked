@@ -205,11 +205,12 @@ class CPlugin {
     gchar *user_agent;
     gchar *player_backend;
     gboolean quicktime_emulation;
+
+		/*new custom options*/
 		gboolean show_fullscreen;
 		
 		/*mplayer control pipe*/
 		gint mplayer_pipe;
-		GIOChannel *mplayer_gio_channel;
 		gboolean pipe_ready;
 		gchar *pipe_name;
 

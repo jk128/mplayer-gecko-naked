@@ -56,7 +56,6 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
 		FILE *fd;
     guint j;
     gint newwindow = 0;
-    gint loop = 0;
     gboolean autohref = FALSE;
     gboolean force_streaming = FALSE;
     ListItem *item = NULL;
@@ -140,13 +139,11 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
                 if (g_ascii_strcasecmp(argv[i], "true") == 0
                     || g_ascii_strcasecmp(argv[i], "yes") == 0
                     || g_ascii_strcasecmp(argv[i], "1") == 0) {
-									printf("go fullcreen\n");
+						//			printf("go fullcreen\n");
 										instance->show_fullscreen = TRUE;
 								}else{
 									instance->show_fullscreen = FALSE;
 								}
-
-							
 						}
 
             if (g_ascii_strcasecmp(argn[i], "width") == 0) {
@@ -332,6 +329,7 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
                 }
             }
 
+#if 0
             if ((g_ascii_strcasecmp(argn[i], "loop") == 0)
                 || (g_ascii_strcasecmp(argn[i], "autorewind")
                     == 0)
@@ -345,6 +343,28 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
                     sscanf(argv[i], "%i", &loop);
                 } else {
                     loop = 0;   // loop disabled
+                }
+            }
+#endif
+            if ((g_ascii_strcasecmp(argn[i], "loop") == 0)
+                || (g_ascii_strcasecmp(argn[i], "autorewind")
+                    == 0)
+                || (g_ascii_strcasecmp(argn[i], "repeat") == 0)) {
+
+                if (g_ascii_strcasecmp(argv[i], "true") == 0
+                    || g_ascii_strcasecmp(argv[i], "yes") == 0
+                    || g_ascii_strcasecmp(argv[i], "infinite") == 0) {
+                    item->loop = TRUE;
+										item->loopcount = 1;/*means infinite*/
+                } else if (g_ascii_isdigit((int) *(argv[i]))) {
+                    item->loop = TRUE;
+										item->loopcount = atoi(argv[i]);
+										if (item->loopcount == 0)
+											item->loop = FALSE;
+										else
+											item->loopcount++;
+                } else {
+                    item->loop = FALSE;   // loop disabled
                 }
             }
 
@@ -523,17 +543,6 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
         src->play = FALSE;
     }
 
-    if (src != NULL) {
-        if (loop != 0) {
-            src->loop = TRUE;
-            src->loopcount = loop;
-        } else {
-            loop = FALSE;
-        }
-    } else {
-        // Having this event fire creates several instances of gmp at some websites
-        // postPlayStateChange(instance->mInstance, STATE_TRANSITIONING);
-    }
 
     // link up src to href objects by id
     if (href != NULL && src != NULL) {
