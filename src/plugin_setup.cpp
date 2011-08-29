@@ -329,42 +329,29 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
                 }
             }
 
-#if 0
             if ((g_ascii_strcasecmp(argn[i], "loop") == 0)
                 || (g_ascii_strcasecmp(argn[i], "autorewind")
                     == 0)
                 || (g_ascii_strcasecmp(argn[i], "repeat") == 0)) {
+printf("argv = loop\n");
+printf("argn: %s\n", argv[i]);
 
                 if (g_ascii_strcasecmp(argv[i], "true") == 0
                     || g_ascii_strcasecmp(argv[i], "yes") == 0
                     || g_ascii_strcasecmp(argv[i], "infinite") == 0) {
-                    loop = -1;
+		printf("Looop = 1\n");
+                    instance->loop = 1;
+		instance->loopcount = 1;/*means infinite*/
                 } else if (g_ascii_isdigit((int) *(argv[i]))) {
-                    sscanf(argv[i], "%i", &loop);
-                } else {
-                    loop = 0;   // loop disabled
-                }
-            }
-#endif
-            if ((g_ascii_strcasecmp(argn[i], "loop") == 0)
-                || (g_ascii_strcasecmp(argn[i], "autorewind")
-                    == 0)
-                || (g_ascii_strcasecmp(argn[i], "repeat") == 0)) {
-
-                if (g_ascii_strcasecmp(argv[i], "true") == 0
-                    || g_ascii_strcasecmp(argv[i], "yes") == 0
-                    || g_ascii_strcasecmp(argv[i], "infinite") == 0) {
-                    item->loop = TRUE;
-										item->loopcount = 1;/*means infinite*/
-                } else if (g_ascii_isdigit((int) *(argv[i]))) {
-                    item->loop = TRUE;
-										item->loopcount = atoi(argv[i]);
-										if (item->loopcount == 0)
-											item->loop = FALSE;
+printf("loop =  %d\n", (int) *(argv[i]));
+                    instance->loop = TRUE;
+										instance->loopcount = atoi(argv[i]);
+										if (instance->loopcount == 0)
+											instance->loop = FALSE;
 										else
-											item->loopcount++;
+											instance->loopcount++;
                 } else {
-                    item->loop = FALSE;   // loop disabled
+                    instance->loop = FALSE;   // loop disabled
                 }
             }
 

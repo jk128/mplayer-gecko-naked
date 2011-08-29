@@ -503,6 +503,14 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				argvn[arg++] = g_strdup_printf("-wid");
 				argvn[arg++] = g_strdup_printf("%i", (gint) mWindow); 
 			}
+
+#if 0
+			if (this->loop){
+				argvn[arg++] = g_strdup_printf("-loop");
+//				argvn[arg++] = g_strdup_printf("%d", this->loopcount);
+				argvn[arg++] = g_strdup_printf("0");
+			}
+#endif
 			argvn[arg] = NULL;
 			playerready = FALSE;
 
@@ -538,8 +546,10 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			fclose(fd);
 
 			/* Launch Mplayer*/
-			ok = g_spawn_async(NULL, argvn, NULL,
-					G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error);
+			ok = g_spawn_async(NULL, argvn, NULL,(GSpawnFlags)
+					(G_SPAWN_SEARCH_PATH 
+					 | G_SPAWN_LEAVE_DESCRIPTORS_OPEN), 
+					NULL, NULL, NULL, &error);
 			if (ok) {
 					player_launched = TRUE;
 			} else {
@@ -560,17 +570,26 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 						item = list_find_next_playable(playlist);
 
 					char *command = 
-						g_strdup_printf("loadfile %s\n\0", item->src);
+						g_strdup_printf("loadfile %s\n", item->src);
 					printf("Writing %s, size %d to channel\n", command, strlen(command));
 					if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
 						perror("channel write");
 
-					if (item->loop){
-						command =
-							g_strdup_printf("loop %i\n\0", item->loopcount);
-						printf("Writing %s, size %d to channel\n", command, strlen(command));
-						if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
-							perror("channel write");
+					if (this->loop){
+						int new_pid = fork();
+						if (new_pid == 0){
+							int i;
+							char *command2;
+
+							sleep(5);
+							command2 = 
+								g_strdup_printf("loop %d\n", this->loopcount);
+							printf("Writing %s %d \n", command2, strlen(command2));
+
+							if ((i=write(this->mplayer_pipe, command2, strlen(command2))) < 0 )
+								perror("channel write");
+							exit(0);
+						}
 					} 
 
 				}	

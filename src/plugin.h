@@ -208,6 +208,8 @@ class CPlugin {
 
 		/*new custom options*/
 		gboolean show_fullscreen;
+		gboolean loop;
+    gint loopcount;             // 1 infinite 
 		
 		/*mplayer control pipe*/
 		gint mplayer_pipe;
