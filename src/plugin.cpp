@@ -434,6 +434,32 @@ NPBool CPlugin::init(NPWindow * pNPWindow)
     return mInitialized;
 }
 
+int8_t CPlugin::writeToPipe(char *command, int fd)
+{
+	char *command_app = command;
+	int strsize = strlen(command);
+	int write_res = 0;
+	int wtot = 0;
+
+	printf("Writing %s %d bytes \n", command,strsize);
+			
+	while ( (command_app - command) < strsize){
+		if ( (write_res = 
+					write(fd, 
+						command_app, 
+						strsize - (command_app - command))) < 0 ){
+			perror("channel write");
+			return 1;
+		}
+		wtot += write_res;
+		command_app += write_res;
+	}
+
+	printf("%d bytes succesfully wrote!\n", wtot);
+
+	return 0;
+}
+
 int16 CPlugin::handleEvent(void *event)
 {
 #ifdef XP_MAC
@@ -561,37 +587,30 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 
 			/*Start playback */
 			if (this->pipe_ready){
-				printf("PIPE READY\n");
 				if (playlist != NULL){
-					printf("PLAYLIST READY\n");
-
 					item = (ListItem *) playlist->data;
+
 					if (item && !item->play)
 						item = list_find_next_playable(playlist);
 
-					char *command = 
-						g_strdup_printf("loadfile %s\n", item->src);
-					printf("Writing %s, size %d to channel\n", command, strlen(command));
-					if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
-						perror("channel write");
+					/*write loadfile command*/
+					this->writeToPipe(
+							g_strdup_printf("loadfile %s\n", item->src),
+						 	this->mplayer_pipe
+							);
 
 					if (this->loop){
 						int new_pid = fork();
 						if (new_pid == 0){
-							int i;
-							char *command2;
-
-							sleep(5);
-							command2 = 
-								g_strdup_printf("loop %d\n", this->loopcount);
-							printf("Writing %s %d \n", command2, strlen(command2));
-
-							if ((i=write(this->mplayer_pipe, command2, strlen(command2))) < 0 )
-								perror("channel write");
+							/*write loop command*/
+							sleep(5);			
+							this->writeToPipe(
+									g_strdup_printf("loop %d\n", this->loopcount),
+								 	this->mplayer_pipe
+									);
 							exit(0);
 						}
 					} 
-
 				}	
 				else
 					printf("no item in playlist\n");

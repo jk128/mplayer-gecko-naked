@@ -118,6 +118,7 @@ class CPlugin {
     void shut();
     NPBool isInitialized();
     int16_t handleEvent(void *event);
+		int8_t writeToPipe(char *command, int fd);
 
     NPObject *GetScriptableObject();
     NPObject *GetScriptableObjectControls();
