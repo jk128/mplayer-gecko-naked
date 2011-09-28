@@ -353,7 +353,8 @@ DBusConnection *dbus_hookup(CPlugin * instance)
     dbus_error_init(&dberror);
     connection = dbus_bus_get_private(type, &dberror);
 
-    dbus_connection_setup_with_g_main(connection, NULL);
+    //dbus_connection_setup_with_g_main(connection, NULL);
+		
 
     dbus_bus_add_match(connection, "type='signal',interface='com.gecko.mediaplayer'", NULL);
     dbus_connection_add_filter(connection, filter_func, instance, NULL);

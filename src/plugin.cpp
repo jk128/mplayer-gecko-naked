@@ -41,7 +41,6 @@
 #include "plugin_list.h"
 #include "plugin_setup.h"
 #include "plugin_types.h"
-#include "plugin_dbus.h"
 #include <nsIPrefBranch.h>
 #include <nsIPrefService.h>
 #include <nsIServiceManager.h>
@@ -510,8 +509,31 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					app_name =  g_find_program_in_path("mplayer");
 			}
 
-	  	argvn[arg++] = g_strdup_printf("%s", app_name);
+			/* Unref std_err channel if active*/
+			if ( this->channel_err  != NULL){
+        g_io_channel_unref(this->channel_err);
+				this->channel_err = NULL;
+			}
 
+			GMainLoop *loop = g_main_loop_new (NULL, FALSE);
+
+			/*create a new channel for stderr*/
+		 	this->channel_err = g_io_channel_unix_new(this->std_err);
+			if (this->channel_err == NULL)
+				printf("Failed to create err channel\n\n");
+      g_io_channel_set_encoding(this->channel_err, NULL, NULL);
+      g_io_channel_set_close_on_unref(this->channel_err, TRUE);
+
+			/* Add handler for input event on stderr*/
+			guint source;
+		 source = g_io_add_watch_full(					
+					this->channel_err, G_PRIORITY_HIGH, G_IO_IN, thread_err_reader, this, NULL);
+			printf("Event Source: %u\n\n", source);
+
+      g_main_loop_run (loop); /* Wheee! */
+
+			/* Build command line for mplayer*/
+	  	argvn[arg++] = g_strdup_printf("%s", app_name);
 			argvn[arg++] = g_strdup_printf("-profile"); 
 			argvn[arg++] = g_strdup_printf("qubica"); 
 
@@ -571,11 +593,13 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			}
 			fclose(fd);
 
+			gint mplayer_pid;
 			/* Launch Mplayer*/
-			ok = g_spawn_async(NULL, argvn, NULL,(GSpawnFlags)
+			ok = g_spawn_async_with_pipes(NULL, argvn, NULL,(GSpawnFlags)
 					(G_SPAWN_SEARCH_PATH 
-					 | G_SPAWN_LEAVE_DESCRIPTORS_OPEN), 
-					NULL, NULL, NULL, &error);
+					 | G_SPAWN_LEAVE_DESCRIPTORS_OPEN), NULL, NULL, &mplayer_pid,
+					NULL, NULL, &(this->std_err) /*NULL*/ , &error);
+
 			if (ok) {
 					player_launched = TRUE;
 			} else {
@@ -622,6 +646,46 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
     return NPERR_NO_ERROR;
 }
 
+gboolean thread_err_reader(GIOChannel * source, GIOCondition condition, gpointer data)
+{
+	/*Read and parse mplayer output on stderr*/
+  GString *mplayer_output;
+	GIOStatus status;
+	GError *err=NULL;
+
+	  if (source == NULL) {
+            printf("source is null\n");
+    }
+
+
+
+	mplayer_output = g_string_new("");
+	status = g_io_channel_read_line_string(source, mplayer_output, NULL, &err);
+	printf("\n\n%d\n\n", status);
+
+	printf("************************************\n");
+	printf("\n%s\n", mplayer_output->str);
+	printf("************************************\n");
+	if(err)
+	printf("err: \n\n %s \n", err->message);
+	else
+		printf("No err");
+
+  if (strstr(mplayer_output->str, "Failed to open") != NULL) {
+      if (strstr(mplayer_output->str, "LIRC") == NULL &&
+          strstr(mplayer_output->str, "/dev/rtc") == NULL &&
+          strstr(mplayer_output->str, "VDPAU") == NULL && strstr(mplayer_output->str, "registry file") == NULL) {
+				printf("***********************\n%s\n***********************\n", mplayer_output->str);
+
+			}
+
+	}
+
+	 g_string_free(mplayer_output, TRUE);
+
+
+}
+
 
 void CPlugin::shut()
 {
@@ -660,7 +724,7 @@ void CPlugin::shut()
 		unlink(this->pipe_name);
 
     if (connection != NULL) {
-        connection = dbus_unhook(connection, this);
+//        connection = dbus_unhook(connection, this);
     }
 }
 

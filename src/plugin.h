@@ -96,6 +96,7 @@ typedef enum {
     QUIT
 } PLAYSTATE;
 
+gboolean thread_err_reader(GIOChannel * source, GIOCondition condition, gpointer data);
 void postDOMEvent(NPP mInstance, const gchar * id, const gchar * event);
 void postPlayStateChange(NPP mInstance, const gint state);
 
@@ -168,6 +169,7 @@ class CPlugin {
     void SetOnMouseOver(const char *event);
     void SetOnDestroy(const char *event);
 
+
   private:
 
      gint mX, mY;
@@ -207,10 +209,18 @@ class CPlugin {
     gchar *player_backend;
     gboolean quicktime_emulation;
 
+		/*Fd for stdin, out and err*/
+		gint std_err;
+		gint std_out;
+		gint std_in;
+
+		GIOChannel *channel_err;
+
 		/*new custom options*/
 		gboolean show_fullscreen;
 		gboolean loop;
     gint loopcount;             // 1 infinite 
+
 		
 		/*mplayer control pipe*/
 		gint mplayer_pipe;
