@@ -509,28 +509,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					app_name =  g_find_program_in_path("mplayer");
 			}
 
-			/* Unref std_err channel if active*/
-			if ( this->channel_err  != NULL){
-        g_io_channel_unref(this->channel_err);
-				this->channel_err = NULL;
-			}
 
-			GMainLoop *loop = g_main_loop_new (NULL, FALSE);
-
-			/*create a new channel for stderr*/
-		 	this->channel_err = g_io_channel_unix_new(this->std_err);
-			if (this->channel_err == NULL)
-				printf("Failed to create err channel\n\n");
-      g_io_channel_set_encoding(this->channel_err, NULL, NULL);
-      g_io_channel_set_close_on_unref(this->channel_err, TRUE);
-
-			/* Add handler for input event on stderr*/
-			guint source;
-		 source = g_io_add_watch_full(					
-					this->channel_err, G_PRIORITY_HIGH, G_IO_IN, thread_err_reader, this, NULL);
-			printf("Event Source: %u\n\n", source);
-
-      g_main_loop_run (loop); /* Wheee! */
 
 			/* Build command line for mplayer*/
 	  	argvn[arg++] = g_strdup_printf("%s", app_name);
@@ -551,18 +530,9 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				argvn[arg++] = g_strdup_printf("-wid");
 				argvn[arg++] = g_strdup_printf("%i", (gint) mWindow); 
 			}
-
-#if 0
-			if (this->loop){
-				argvn[arg++] = g_strdup_printf("-loop");
-//				argvn[arg++] = g_strdup_printf("%d", this->loopcount);
-				argvn[arg++] = g_strdup_printf("0");
-			}
-#endif
 			argvn[arg] = NULL;
 			playerready = FALSE;
 
-			printf("\n %i \n", (gint) mWindow);
 			/* Log to file*/
 			FILE *fd;
 #ifdef ME
@@ -572,8 +542,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 #endif
 				perror("Unable to open/create file");
 			}
-
-
+			/* Write options to log file*/
 			int app = 0;
 			int write_res=0;
 			while ( argvn[app] != NULL){
@@ -593,8 +562,10 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			}
 			fclose(fd);
 
-			gint mplayer_pid;
+
 			/* Launch Mplayer*/
+			gint mplayer_pid;
+			this->std_err = -1;
 			ok = g_spawn_async_with_pipes(NULL, argvn, NULL,(GSpawnFlags)
 					(G_SPAWN_SEARCH_PATH 
 					 | G_SPAWN_LEAVE_DESCRIPTORS_OPEN), NULL, NULL, &mplayer_pid,
@@ -608,6 +579,23 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					error = NULL;
 			}
 			g_free(app_name);
+
+			/* Unref std_err channel if active*/
+			if ( this->channel_err  != NULL){
+        g_io_channel_unref(this->channel_err);
+				this->channel_err = NULL;
+			}
+
+			/*create a new channel for stderr*/
+		 	this->channel_err = g_io_channel_unix_new(this->std_err);
+			if (this->channel_err == NULL)
+				printf("Failed to create err channel\n\n");
+      g_io_channel_set_encoding(this->channel_err, NULL, NULL);
+      g_io_channel_set_close_on_unref(this->channel_err, TRUE);
+
+			/* Add handler for input event on stderr*/
+		 	this->err_source_id = g_io_add_watch_full(					
+					this->channel_err, G_PRIORITY_HIGH, G_IO_IN, thread_err_reader, this, NULL);
 
 			/*Start playback */
 			if (this->pipe_ready){
@@ -653,36 +641,26 @@ gboolean thread_err_reader(GIOChannel * source, GIOCondition condition, gpointer
 	GIOStatus status;
 	GError *err=NULL;
 
-	  if (source == NULL) {
-            printf("source is null\n");
-    }
-
-
-
-	mplayer_output = g_string_new("");
-	status = g_io_channel_read_line_string(source, mplayer_output, NULL, &err);
-	printf("\n\n%d\n\n", status);
-
-	printf("************************************\n");
-	printf("\n%s\n", mplayer_output->str);
-	printf("************************************\n");
-	if(err)
-	printf("err: \n\n %s \n", err->message);
-	else
-		printf("No err");
-
-  if (strstr(mplayer_output->str, "Failed to open") != NULL) {
-      if (strstr(mplayer_output->str, "LIRC") == NULL &&
-          strstr(mplayer_output->str, "/dev/rtc") == NULL &&
-          strstr(mplayer_output->str, "VDPAU") == NULL && strstr(mplayer_output->str, "registry file") == NULL) {
-				printf("***********************\n%s\n***********************\n", mplayer_output->str);
-
-			}
-
+	if (source == NULL) {
+					printf("source is null\n");
 	}
 
-	 g_string_free(mplayer_output, TRUE);
+	do {
+		mplayer_output = g_string_new("");
+		status = g_io_channel_read_line_string(source, mplayer_output, NULL, &err);
 
+		if (strstr(mplayer_output->str, "Failed to open") != NULL) {
+				if (strstr(mplayer_output->str, "LIRC") == NULL &&
+						strstr(mplayer_output->str, "/dev/rtc") == NULL &&
+						strstr(mplayer_output->str, "VDPAU") == NULL && 
+						strstr(mplayer_output->str, "registry file") == NULL) {
+				  	printf("***********************\n%s\n***********************\n",
+							 	mplayer_output->str);
+				}
+
+		}
+		 g_string_free(mplayer_output, TRUE);
+	}while( status != G_IO_STATUS_EOF);
 
 }
 
@@ -710,6 +688,14 @@ void CPlugin::shut()
     if (event_destroy != NULL) {
         NPN_GetURL(mInstance, event_destroy, NULL);
     }
+
+		/*clean channel and event sources*/
+		 g_source_remove(this->err_source_id);
+		 if( this->channel_err != NULL) {
+				 g_io_channel_shutdown(this->channel_err, FALSE, NULL);
+         g_io_channel_unref(this->channel_err);
+         this->channel_err = NULL;
+		 }
 
 		/*tell mplayer to stop playback and then exit*/
 		if (write(this->mplayer_pipe, command, strlen(command)) < 0 )

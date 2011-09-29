@@ -215,6 +215,7 @@ class CPlugin {
 		gint std_in;
 
 		GIOChannel *channel_err;
+		guint err_source_id; 
 
 		/*new custom options*/
 		gboolean show_fullscreen;
