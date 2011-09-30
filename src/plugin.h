@@ -97,6 +97,7 @@ typedef enum {
 } PLAYSTATE;
 
 gboolean thread_err_reader(GIOChannel * source, GIOCondition condition, gpointer data);
+gboolean thread_out_reader(GIOChannel * source, GIOCondition condition, gpointer data);
 void postDOMEvent(NPP mInstance, const gchar * id, const gchar * event);
 void postPlayStateChange(NPP mInstance, const gint state);
 
@@ -119,7 +120,7 @@ class CPlugin {
     void shut();
     NPBool isInitialized();
     int16_t handleEvent(void *event);
-		int8_t writeToPipe(char *command, int fd);
+		int8_t write_to_mplayer(GIOChannel *std_in_channel, char *command);
 
     NPObject *GetScriptableObject();
     NPObject *GetScriptableObjectControls();
@@ -209,13 +210,24 @@ class CPlugin {
     gchar *player_backend;
     gboolean quicktime_emulation;
 
-		/*Fd for stdin, out and err*/
+		/* Stdin, out and err
+		 *	- fd
+		 *	- channels
+		 *	- source
+		 */
 		gint std_err;
 		gint std_out;
 		gint std_in;
 
 		GIOChannel *channel_err;
+		GIOChannel *channel_out;
+		GIOChannel *channel_in;
+
 		guint err_source_id; 
+		guint in_source_id; 
+		guint out_source_id; 
+
+		gint mplayer_pid;
 
 		/*new custom options*/
 		gboolean show_fullscreen;
