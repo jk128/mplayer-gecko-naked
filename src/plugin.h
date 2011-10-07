@@ -234,6 +234,10 @@ class CPlugin {
 		gboolean loop;
     gint loopcount;             // 1 infinite 
 
+
+		/*new dispatcherId and monitorId*/
+		gint monitor_id;
+		gchar *dispatcher_id;
 		
 		/*mplayer control pipe*/
 		gint mplayer_pipe;

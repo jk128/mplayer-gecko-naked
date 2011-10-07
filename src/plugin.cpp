@@ -165,14 +165,16 @@ NPError NS_PluginGetValue(NPPVariable aVariable, void *aValue)
 
 void postDOMEvent(NPP mInstance, const gchar * id, const gchar * event)
 {
-    gchar *jscript;
+  gchar *jscript;
+	printf("ID value: %s, event: %s\n", id, event);
 
-    jscript = g_strdup_printf("javascript:obj_gmp=document.getElementById('%s');"
-                              "e_gmp=document.createEvent('Events');"
+  jscript = g_strdup_printf("javascript:var obj_gmp=document.getElementById('%s');"
+                              "var e_gmp=document.createEvent('Events');"
                               "e_gmp.initEvent('%s',true,true);" "obj_gmp.dispatchEvent(e_gmp);",
                               id, event);
-    NPN_GetURL(mInstance, jscript, NULL);
-    g_free(jscript);
+	printf("%s\n", jscript);
+  NPN_GetURL(mInstance, jscript, NULL);
+  g_free(jscript);
 }
 
 // disabled for now due to problems with certain sites
@@ -215,6 +217,7 @@ hidden(FALSE),
 autostart(1),
 lastupdate(0),
 show_controls(1),
+monitor_id(0),
 name(NULL),
 id(NULL),
 console(NULL),
@@ -488,15 +491,16 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 
 			/* Build command line for mplayer*/
 	  	argvn[arg++] = g_strdup_printf("%s", app_name);
+
 			argvn[arg++] = g_strdup_printf("-profile"); 
-			argvn[arg++] = g_strdup_printf("qubica"); 
+			if (this->monitor_id == 1)
+				argvn[arg++] = g_strdup_printf("qubica-sx"); 
+			else if (this->monitor_id == 2)
+				argvn[arg++] = g_strdup_printf("qubica-dx"); 
+			else if (this->monitor_id == 0)
+				argvn[arg++] = g_strdup_printf("qubica"); 
 
 			argvn[arg++] = g_strdup_printf("-slave"); 
-			/* Rediret std_in instead
-			 *
-			argvn[arg++] = g_strdup_printf("-input");  
-			argvn[arg++] = g_strdup_printf("file=%s", this->pipe_name);
-			*/
 			argvn[arg++] = g_strdup_printf("-idle");
 			argvn[arg++] = g_strdup_printf("-nograbpointer");
 			argvn[arg++] = g_strdup_printf("-nomouseinput");
@@ -549,11 +553,10 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			ok = g_spawn_async_with_pipes(NULL, argvn,
 				 	NULL,
 					(GSpawnFlags) 
-					(G_SPAWN_SEARCH_PATH |
-					 G_SPAWN_LEAVE_DESCRIPTORS_OPEN),
+					(G_SPAWN_SEARCH_PATH), 
 				 	NULL, NULL, &mplayer_pid,
 					&(this->std_in),&(this->std_out),
-					&(this->std_err) , &error);
+					&(this->std_err), &error);
 
 			if (ok) {
 					player_launched = TRUE;
@@ -606,13 +609,17 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			}
 
 			/* Add handler for input event on stdout*/
+#if 0 
 		 	this->out_source_id = g_io_add_watch_full(	
-					this->channel_out, G_PRIORITY_HIGH,
+					this->channel_out, G_PRIORITY_LOW,
 				 	G_IO_IN, thread_out_reader, this, NULL);
+			printf("OUT_SOURCE: %d\n", this->out_source_id);
+#endif
 			/* Add handler for input event on stderr*/
 		 	this->err_source_id = g_io_add_watch_full(	
 					this->channel_err, G_PRIORITY_HIGH,
 				 	G_IO_IN, thread_err_reader, this, NULL);
+			printf("ERR SOURCE: %d\n", this->err_source_id);
 
 			/*Start playback */
 			if (this->pipe_ready){
@@ -685,30 +692,33 @@ gboolean thread_out_reader
  gpointer data)
 {
 	/*Read and parse mplayer output on stderr*/
+	CPlugin *plugin = (CPlugin *)data;
   GString *mplayer_output;
 	GIOStatus status;
 	GError *err=NULL;
 
-	printf("OUT\n\n");
 	if (source != NULL) {
 		do {
 			mplayer_output = g_string_new("");
 			status = g_io_channel_read_line_string(
 					source, mplayer_output, NULL, &err);
-			if ( strstr(mplayer_output->str, "A: ") 
+
+						if ( strstr(mplayer_output->str, "A: ") 
 				== NULL &&
 				strstr(mplayer_output->str, "V: ")
 				== NULL &&
 				strstr(mplayer_output->str, "A-V: ")
 				== NULL ){
+							printf("OUT:%s\n",
+								mplayer_output->str);
 					if (strstr(mplayer_output->str, "EOF code")
 						 != NULL){
 						/* DOM Event video End */
+						postDOMEvent(plugin->mInstance, 
+								plugin->dispatcher_id, "error");
 						printf("Video End--> DOM EVENT\n\n");
 
 					}
-					printf("%s",
-								mplayer_output->str);
 			}
 			g_string_free(mplayer_output, TRUE);
 		}while( status != G_IO_STATUS_EOF);
@@ -723,6 +733,7 @@ gboolean thread_err_reader
  gpointer data)
 {
 	/*Read and parse mplayer output on stderr*/
+	CPlugin *plugin = (CPlugin *)data;
   GString *mplayer_output;
 	GIOStatus status;
 	GError *err=NULL;
@@ -732,6 +743,8 @@ gboolean thread_err_reader
 			mplayer_output = g_string_new("");
 			status = g_io_channel_read_line_string(
 					source, mplayer_output, NULL, &err);
+			printf("%s\n",
+					mplayer_output->str);
 
 			if(strstr(mplayer_output->str, "Failed to open") 
 					!= NULL) {
@@ -743,11 +756,18 @@ gboolean thread_err_reader
 							== NULL && 
 							strstr(mplayer_output->str, "registry file") 
 							== NULL) {
-								printf("***********************\n%s\n***********************\n",
-									mplayer_output->str);
+						printf("\n!!!! --> DOM ERROR NO FILE <--!!!!\n");
+						postDOMEvent(plugin->mInstance, 
+						plugin->dispatcher_id, "error");
 					}
-			}
-			 g_string_free(mplayer_output, TRUE);
+			}else if(strstr(mplayer_output->str, 
+						"Failed to get a SDP description")!= NULL){
+					printf("\n!!!! --> DOM ERROR NO STREAM <--!!!!\n");
+					sleep(5);
+					postDOMEvent(plugin->mInstance, 
+						plugin->dispatcher_id, "error");
+					}
+			g_string_free(mplayer_output, TRUE);
 		}while( status != G_IO_STATUS_EOF);
 	}else{
 					printf("source is null\n");

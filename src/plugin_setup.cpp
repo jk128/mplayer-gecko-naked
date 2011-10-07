@@ -183,6 +183,20 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
                 src = item;
             }
 
+
+            if (g_ascii_strcasecmp(argn[i], "monitorId") == 0){
+							if (g_ascii_strcasecmp(argv[i], "1"))
+									instance->monitor_id = 1; 
+							else if (g_ascii_strcasecmp(argv[i], "2"))
+									instance->monitor_id = 2;
+							else 
+									instance->monitor_id = 0;
+						}
+						/* argn[i] is the dispatcherid */
+            if (g_ascii_strcasecmp(argn[i], "dispatcherId") == 0){
+							instance->dispatcher_id = 
+								g_strdup_printf("%s", argv[i]);
+						}
             if (g_ascii_strcasecmp(argn[i], "filename") == 0) {
                 item = g_new0(ListItem, 1);
                 g_strlcpy(item->src, argv[i], 4096);
@@ -333,18 +347,18 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
                 || (g_ascii_strcasecmp(argn[i], "autorewind")
                     == 0)
                 || (g_ascii_strcasecmp(argn[i], "repeat") == 0)) {
-printf("argv = loop\n");
-printf("argn: %s\n", argv[i]);
+									printf("argv = loop\n");
+									printf("argn: %s\n", argv[i]);
 
                 if (g_ascii_strcasecmp(argv[i], "true") == 0
                     || g_ascii_strcasecmp(argv[i], "yes") == 0
                     || g_ascii_strcasecmp(argv[i], "infinite") == 0) {
-		printf("Looop = 1\n");
-                    instance->loop = 1;
-		instance->loopcount = 1;/*means infinite*/
+									printf("Looop = 1\n");
+                  instance->loop = 1;
+									instance->loopcount = 1;/*means infinite*/
                 } else if (g_ascii_isdigit((int) *(argv[i]))) {
-printf("loop =  %d\n", (int) *(argv[i]));
-                    instance->loop = TRUE;
+									printf("loop =  %d\n", (int) *(argv[i]));
+                  instance->loop = TRUE;
 										instance->loopcount = atoi(argv[i]);
 										if (instance->loopcount == 0)
 											instance->loop = FALSE;
