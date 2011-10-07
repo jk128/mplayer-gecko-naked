@@ -547,7 +547,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 
 			/*  Launch Mplayer  */
 			this->std_in = -1;
-			this->std_out = -1;
+			//this->std_out = -1;
 			this->std_err = -1;
 
 			ok = g_spawn_async_with_pipes(NULL, argvn,
@@ -572,11 +572,11 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			if ( this->channel_in  != NULL){
         g_io_channel_unref(this->channel_in);
 				this->channel_in = NULL;
-			}
+			}/*
 			if ( this->channel_out  != NULL){
         g_io_channel_unref(this->channel_out);
 				this->channel_out = NULL;
-			}
+			}*/
 			if ( this->channel_err  != NULL){
         g_io_channel_unref(this->channel_err);
 				this->channel_err = NULL;
@@ -590,7 +590,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 						this->channel_in, NULL, NULL);
 				g_io_channel_set_close_on_unref(
 						this->channel_in, TRUE);
-			}
+			}/*
 			if( (this->channel_out = 
 						g_io_channel_unix_new(this->std_out))
 					!= NULL){
@@ -598,7 +598,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 						this->channel_out, NULL, NULL);
 				g_io_channel_set_close_on_unref(
 						this->channel_out, TRUE);
-			}
+			}*/
 			if( (this->channel_err = 
 						g_io_channel_unix_new(this->std_err))
 					!= NULL ){
@@ -607,9 +607,8 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				g_io_channel_set_close_on_unref(
 						this->channel_err, TRUE);
 			}
-
+#if 0
 			/* Add handler for input event on stdout*/
-#if 0 
 		 	this->out_source_id = g_io_add_watch_full(	
 					this->channel_out, G_PRIORITY_LOW,
 				 	G_IO_IN, thread_out_reader, this, NULL);
@@ -698,7 +697,6 @@ gboolean thread_out_reader
 	GError *err=NULL;
 
 	if (source != NULL) {
-		do {
 			mplayer_output = g_string_new("");
 			status = g_io_channel_read_line_string(
 					source, mplayer_output, NULL, &err);
@@ -721,7 +719,6 @@ gboolean thread_out_reader
 					}
 			}
 			g_string_free(mplayer_output, TRUE);
-		}while( status != G_IO_STATUS_EOF);
 	}else{
 		printf("source is null\n");
 	}
@@ -736,14 +733,13 @@ gboolean thread_err_reader
 	CPlugin *plugin = (CPlugin *)data;
   GString *mplayer_output;
 	GIOStatus status;
-	GError *err=NULL;
+	printf("Enter err_thread\n");
 
 	if (source != NULL) {
-		do {
 			mplayer_output = g_string_new("");
 			status = g_io_channel_read_line_string(
-					source, mplayer_output, NULL, &err);
-			printf("%s\n",
+					source, mplayer_output, NULL, NULL);
+			printf("--------------> ---------- >%s",
 					mplayer_output->str);
 
 			if(strstr(mplayer_output->str, "Failed to open") 
@@ -768,10 +764,10 @@ gboolean thread_err_reader
 						plugin->dispatcher_id, "error");
 					}
 			g_string_free(mplayer_output, TRUE);
-		}while( status != G_IO_STATUS_EOF);
 	}else{
 					printf("source is null\n");
 	}
+	printf("Exit err_thread\n");
 
 }
 
@@ -809,26 +805,28 @@ void CPlugin::shut()
 
 		/*clean channel and event sources*/
 		 g_source_remove(this->err_source_id);
-		 g_source_remove(this->out_source_id);
+		 //g_source_remove(this->out_source_id);
+
 		 if( this->channel_in != NULL) {
 				 g_io_channel_shutdown(this->channel_in, FALSE, NULL);
          g_io_channel_unref(this->channel_in);
          this->channel_in = NULL;
 		 }
+		 /*
 		 if( this->channel_out != NULL) {
 				 g_io_channel_shutdown(this->channel_out, FALSE, NULL);
          g_io_channel_unref(this->channel_out);
          this->channel_out = NULL;
-		 }
+		 }*/
 		 if( this->channel_err != NULL) {
 				 g_io_channel_shutdown(this->channel_err, FALSE, NULL);
          g_io_channel_unref(this->channel_err);
          this->channel_err = NULL;
 		 }
 
-		 this->std_in = -1;
-		 this->std_out = -1;
-		 this->std_err = -1;
+		 //this->std_in = -1;
+//		 this->std_out = -1;
+		 //this->std_err = -1;
 #if 0
 		if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
 						perror("channel write");
@@ -838,14 +836,12 @@ void CPlugin::shut()
 		close(this->mplayer_pipe);
 
 		/*delete pipe from filesystem*/
-		printf("\n\nSHUT\n\n");
+
 		unlink(this->pipe_name);
 #endif
+printf("\n\nSHUT\n\n");
 
 
-    if (connection != NULL) {
-//        connection = dbus_unhook(connection, this);
-    }
 }
 
 NPBool CPlugin::isInitialized()
