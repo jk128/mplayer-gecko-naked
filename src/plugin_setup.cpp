@@ -74,7 +74,7 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
     NPError nperror;
     guint32 supportsWindowless = FALSE; // NPBool + padding
     gchar *app_name;
-
+#ifdef LOG
 #ifdef ME
 				if ( (fd=fopen("/home/jacopo/gecko.log", "w")) == NULL){
 #else 
@@ -82,12 +82,13 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
 #endif
 					perror("Unable to open/create file");
 				}
+#endif
 
 	  if (instance->mode == NP_EMBED) {
        for (i = 0; i < argc; i++) {
            if (argn[i] == NULL)
                continue;
-
+#ifdef LOG
 						app_args = g_strdup_printf("ARG: %s = %s\n", argn[i], argv[i]);
 						app_len = strlen(app_args);
 						gchar *app = app_args;
@@ -101,6 +102,7 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
 							}
 							app+=write_res;
 						}
+#endif
 
             if (g_ascii_strcasecmp(argn[i], "name") == 0) {
                 instance->name = g_strdup(argv[i]);
@@ -494,7 +496,9 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
             }
 
         };
+#ifdef LOG
 				fclose(fd);
+#endif
     } else {
         // printf("Non-Embed Mode\n");
         for (i = 0; i < argc; i++) {

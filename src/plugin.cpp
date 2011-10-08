@@ -518,9 +518,8 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			}
 			argvn[arg] = NULL;
 			playerready = FALSE;
-			printf("ASD\n");
 
-#if 0
+#if  LOG
 			/* Log to file*/
 			FILE *fd;
 #ifdef ME
@@ -561,7 +560,12 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					(GSpawnFlags) 
 					(G_SPAWN_SEARCH_PATH), 
 				 	NULL, NULL, &mplayer_pid,
-					&(this->std_in),&(this->std_out),
+					&(this->std_in),
+#ifdef STDOUT //display std_out
+					NULL,
+#else							//mute std_out
+					&(this->std_out),
+#endif
 					&(this->std_err), &error);
 
 			printf("ASD\n");
@@ -585,18 +589,14 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			if ( this->channel_out  != NULL){
         g_io_channel_unref(this->channel_out);
 				this->channel_out = NULL;
-			}*/
-			printf("pre unref\n");
-			/*if ( this->channel_err  != NULL){
-				printf("inside unref\n");
+			}
+			if ( this->channel_err  != NULL){
 				g_io_channel_shutdown(this->channel_err, FALSE, NULL);
-				printf("inside unref\n");
         g_io_channel_unref(this->channel_err);
-				printf("inside unref\n");
 				this->channel_err = NULL;
 			}
-			printf("post unref\n");
-*/
+			*/
+
 			/* create new channels */ 
 			if( (this->channel_in = 
 						g_io_channel_unix_new(this->std_in))
@@ -614,7 +614,6 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				g_io_channel_set_close_on_unref(
 						this->channel_out, TRUE);
 			}*/
-			printf("ASD\n");
 			if( (this->channel_err = 
 						g_io_channel_unix_new(this->std_err))
 					!= NULL ){
@@ -623,19 +622,11 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				g_io_channel_set_close_on_unref(
 						this->channel_err, TRUE);
 			}
-			printf("ASD\n");
-#if 0
-			/* Add handler for input event on stdout*/
-		 	this->out_source_id = g_io_add_watch_full(	
-					this->channel_out, G_PRIORITY_LOW,
-				 	G_IO_IN, thread_out_reader, this, NULL);
-			printf("OUT_SOURCE: %d\n", this->out_source_id);
-#endif
+
 			/* Add handler for input event on stderr*/
 		 	this->err_source_id = g_io_add_watch_full(	
 					this->channel_err, G_PRIORITY_HIGH,
 				 	G_IO_IN, thread_err_reader, this, NULL);
-			printf("ERR SOURCE: %d\n", this->err_source_id);
 
 			/*Start playback */
 			if (this->pipe_ready){
@@ -816,7 +807,6 @@ void CPlugin::shut()
 
 		/*clean channel and event sources*/
 		 g_source_remove(this->err_source_id);
-		 //g_source_remove(this->out_source_id);
 
 		 if( this->channel_in != NULL) {
 				 g_io_channel_shutdown(this->channel_in, FALSE, NULL);
@@ -830,38 +820,23 @@ void CPlugin::shut()
          this->channel_out = NULL;
 		 }*/
 		 if( this->channel_err != NULL) {
-			 printf("SHUT channel_err\n");
 				 g_io_channel_shutdown(this->channel_err, FALSE, NULL);
-			 printf("SHUT channel_err\n");
          g_io_channel_unref(this->channel_err);
-			 printf("SHUT channel_err\n");
          this->channel_err = NULL;
 		 }
 
 		/*tell mplayer to stop playback and then exit*/
 		this->write_to_mplayer(this->channel_in, "stop\n");
-		//this->write_to_mplayer(this->channel_in, "quit\n");
+		this->write_to_mplayer(this->channel_in, "quit\n");
 
 		/*close Mplayer thread*/
 		g_spawn_close_pid(this->mplayer_pid);
 
 
-		 //this->std_in = -1;
-//		 this->std_out = -1;
-		 //this->std_err = -1;
-#if 0
-		if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
-						perror("channel write");
-		command = g_strdup_printf("quit\n\0");
-		if (write(this->mplayer_pipe, command, strlen(command)) < 0 )
-						perror("channel write");
-		close(this->mplayer_pipe);
-
-		/*delete pipe from filesystem*/
-
-		unlink(this->pipe_name);
-#endif
-printf("\n\nSHUT\n\n");
+		 this->std_in = -1;
+		 this->std_out = -1;
+		 this->std_err = -1;
+     printf("\nshutdown plugin\an\n");
 
 
 }
