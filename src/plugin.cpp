@@ -166,6 +166,10 @@ NPError NS_PluginGetValue(NPPVariable aVariable, void *aValue)
 void postDOMEvent(NPP mInstance, const gchar * id, const gchar * event)
 {
   gchar *jscript;
+	if ( id == NULL){
+		printf("No ID, using default video_player\n");
+		id = g_strdup_printf("video_player");
+	}
 	printf("ID value: %s, event: %s\n", id, event);
 
   jscript = g_strdup_printf("javascript:var obj_gmp=document.getElementById('%s');"
@@ -514,7 +518,9 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			}
 			argvn[arg] = NULL;
 			playerready = FALSE;
+			printf("ASD\n");
 
+#if 0
 			/* Log to file*/
 			FILE *fd;
 #ifdef ME
@@ -543,12 +549,12 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				app++;
 			}
 			fclose(fd);
-
+#endif
 
 			/*  Launch Mplayer  */
-			this->std_in = -1;
+			//this->std_in = -1;
 			//this->std_out = -1;
-			this->std_err = -1;
+			//this->std_err = -1;
 
 			ok = g_spawn_async_with_pipes(NULL, argvn,
 				 	NULL,
@@ -557,6 +563,8 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				 	NULL, NULL, &mplayer_pid,
 					&(this->std_in),&(this->std_out),
 					&(this->std_err), &error);
+
+			printf("ASD\n");
 
 			if (ok) {
 					player_launched = TRUE;
@@ -567,6 +575,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					error = NULL;
 			}
 			g_free(app_name);
+			printf("ASD\n");
 
 			/* Unref active channels */
 			if ( this->channel_in  != NULL){
@@ -577,11 +586,17 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
         g_io_channel_unref(this->channel_out);
 				this->channel_out = NULL;
 			}*/
-			if ( this->channel_err  != NULL){
+			printf("pre unref\n");
+			/*if ( this->channel_err  != NULL){
+				printf("inside unref\n");
+				g_io_channel_shutdown(this->channel_err, FALSE, NULL);
+				printf("inside unref\n");
         g_io_channel_unref(this->channel_err);
+				printf("inside unref\n");
 				this->channel_err = NULL;
 			}
-
+			printf("post unref\n");
+*/
 			/* create new channels */ 
 			if( (this->channel_in = 
 						g_io_channel_unix_new(this->std_in))
@@ -599,6 +614,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				g_io_channel_set_close_on_unref(
 						this->channel_out, TRUE);
 			}*/
+			printf("ASD\n");
 			if( (this->channel_err = 
 						g_io_channel_unix_new(this->std_err))
 					!= NULL ){
@@ -607,6 +623,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 				g_io_channel_set_close_on_unref(
 						this->channel_err, TRUE);
 			}
+			printf("ASD\n");
 #if 0
 			/* Add handler for input event on stdout*/
 		 	this->out_source_id = g_io_add_watch_full(	
@@ -733,13 +750,12 @@ gboolean thread_err_reader
 	CPlugin *plugin = (CPlugin *)data;
   GString *mplayer_output;
 	GIOStatus status;
-	printf("Enter err_thread\n");
 
 	if (source != NULL) {
 			mplayer_output = g_string_new("");
 			status = g_io_channel_read_line_string(
 					source, mplayer_output, NULL, NULL);
-			printf("--------------> ---------- >%s",
+			printf("-----std_err-----> %s",
 					mplayer_output->str);
 
 			if(strstr(mplayer_output->str, "Failed to open") 
@@ -752,14 +768,15 @@ gboolean thread_err_reader
 							== NULL && 
 							strstr(mplayer_output->str, "registry file") 
 							== NULL) {
-						printf("\n!!!! --> DOM ERROR NO FILE <--!!!!\n");
-						postDOMEvent(plugin->mInstance, 
-						plugin->dispatcher_id, "error");
-					}
+					printf("\n!!!! --> DOM ERROR NO FILE <--!!!!\n");
+					sleep(2);
+					postDOMEvent(plugin->mInstance, 
+					plugin->dispatcher_id, "error");
+				}
 			}else if(strstr(mplayer_output->str, 
 						"Failed to get a SDP description")!= NULL){
 					printf("\n!!!! --> DOM ERROR NO STREAM <--!!!!\n");
-					sleep(5);
+					sleep(2);
 					postDOMEvent(plugin->mInstance, 
 						plugin->dispatcher_id, "error");
 					}
@@ -767,7 +784,7 @@ gboolean thread_err_reader
 	}else{
 					printf("source is null\n");
 	}
-	printf("Exit err_thread\n");
+	printf(" ");//flush stdout, DO NOT REMOVE, it will block the thread
 
 }
 
@@ -796,12 +813,6 @@ void CPlugin::shut()
         NPN_GetURL(mInstance, event_destroy, NULL);
     }
 
-		/*tell mplayer to stop playback and then exit*/
-		this->write_to_mplayer(this->channel_in, "stop\n");
-		this->write_to_mplayer(this->channel_in, "quit\n");
-
-		/*close Mplayer thread*/
-		g_spawn_close_pid(this->mplayer_pid);
 
 		/*clean channel and event sources*/
 		 g_source_remove(this->err_source_id);
@@ -819,10 +830,21 @@ void CPlugin::shut()
          this->channel_out = NULL;
 		 }*/
 		 if( this->channel_err != NULL) {
+			 printf("SHUT channel_err\n");
 				 g_io_channel_shutdown(this->channel_err, FALSE, NULL);
+			 printf("SHUT channel_err\n");
          g_io_channel_unref(this->channel_err);
+			 printf("SHUT channel_err\n");
          this->channel_err = NULL;
 		 }
+
+		/*tell mplayer to stop playback and then exit*/
+		this->write_to_mplayer(this->channel_in, "stop\n");
+		//this->write_to_mplayer(this->channel_in, "quit\n");
+
+		/*close Mplayer thread*/
+		g_spawn_close_pid(this->mplayer_pid);
+
 
 		 //this->std_in = -1;
 //		 this->std_out = -1;
