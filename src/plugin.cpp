@@ -770,7 +770,14 @@ gboolean thread_err_reader
 					sleep(2);
 					postDOMEvent(plugin->mInstance, 
 						plugin->dispatcher_id, "error");
-					}
+			}else if(strstr(mplayer_output->str,
+						"No stream found to handle url") != NULL){
+					printf("\n!!!! --> DOM ERROR NO STREAM <--!!!!\n");
+					sleep(2);
+					postDOMEvent(plugin->mInstance, 
+						plugin->dispatcher_id, "error");
+			}
+
 			g_string_free(mplayer_output, TRUE);
 	}else{
 					printf("source is null\n");
