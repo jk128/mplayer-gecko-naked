@@ -729,12 +729,11 @@ gboolean thread_out_reader
 
 				if (strstr(mplayer_output->str, 
 								"EOF code: 1")!= NULL){
-					printf("\n!!!! --> DOM ERROR FILE END <--!!!!\n");
 					sleep(2);
 					/* DOM Event video End */
 					postDOMEvent(plugin->mInstance, 
-							plugin->id, "error");
-					printf("Video End--> DOM EVENT\n\n");
+							plugin->id, "end");
+					printf("Video End--> DOM EVENT end\n\n");
 			}
 		}
 		g_string_free(mplayer_output, TRUE);
@@ -777,9 +776,10 @@ gboolean thread_err_reader
 				}
 			}else if(strstr(mplayer_output->str, 
 						"Failed to get a SDP description")!= NULL){
-					printf("\n!!!! --> DOM ERROR NO STREAM <--!!!!\n");
 					sleep(2);
-					postDOMEvent(plugin->mInstance, plugin->id, "error");
+					postDOMEvent(plugin->mInstance,
+						 	plugin->id, "error");
+					printf("Video Error--> DOM EVENT error\n\n");
 			}else if(strstr(mplayer_output->str,
 						"No stream found to handle url") != NULL){
 					printf("\n!!!! --> DOM ERROR NO STREAM <--!!!!\n");
