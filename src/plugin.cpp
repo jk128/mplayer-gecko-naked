@@ -165,20 +165,22 @@ NPError NS_PluginGetValue(NPPVariable aVariable, void *aValue)
 
 void postDOMEvent(NPP mInstance, const gchar * id, const gchar * event)
 {
-  gchar *jscript;
-	if ( id == NULL){
-		printf("No ID, using default video_player\n");
-		id = g_strdup_printf("video_player");
+	gchar *eventTarget;
+	if ( id == NULL) {
+		eventTarget = g_strdup_printf("document");
+	} else {
+		eventTarget = g_strdup_printf("document.getElementById('%s')", id);
 	}
-	printf("ID value: %s, event: %s\n", id, event);
 
-  jscript = g_strdup_printf("javascript:var obj_gmp=document.getElementById('%s');"
+  	gchar *jscript = g_strdup_printf("javascript:var obj_gmp=%s;"
                               "var e_gmp=document.createEvent('Events');"
-                              "e_gmp.initEvent('%s',true,true);" "obj_gmp.dispatchEvent(e_gmp);",
-                              id, event);
+                              "e_gmp.initEvent('%s',true,true);"
+                              "obj_gmp.dispatchEvent(e_gmp);",
+                              eventTarget, event);
 	printf("%s\n", jscript);
-  NPN_GetURL(mInstance, jscript, NULL);
-  g_free(jscript);
+	
+  	NPN_GetURL(mInstance, jscript, NULL);
+  	g_free(jscript);
 }
 
 // disabled for now due to problems with certain sites
@@ -720,8 +722,7 @@ gboolean thread_out_reader
 					if (strstr(mplayer_output->str, "EOF code")
 						 != NULL){
 						/* DOM Event video End */
-						postDOMEvent(plugin->mInstance, 
-								plugin->dispatcher_id, "error");
+						postDOMEvent(plugin->mInstance, plugin->id, "error");
 						printf("Video End--> DOM EVENT\n\n");
 
 					}
@@ -761,21 +762,18 @@ gboolean thread_err_reader
 							== NULL) {
 					printf("\n!!!! --> DOM ERROR NO FILE <--!!!!\n");
 					sleep(2);
-					postDOMEvent(plugin->mInstance, 
-					plugin->dispatcher_id, "error");
+					postDOMEvent(plugin->mInstance, plugin->id, "error");
 				}
 			}else if(strstr(mplayer_output->str, 
 						"Failed to get a SDP description")!= NULL){
 					printf("\n!!!! --> DOM ERROR NO STREAM <--!!!!\n");
 					sleep(2);
-					postDOMEvent(plugin->mInstance, 
-						plugin->dispatcher_id, "error");
+					postDOMEvent(plugin->mInstance, plugin->id, "error");
 			}else if(strstr(mplayer_output->str,
 						"No stream found to handle url") != NULL){
 					printf("\n!!!! --> DOM ERROR NO STREAM <--!!!!\n");
 					sleep(2);
-					postDOMEvent(plugin->mInstance, 
-						plugin->dispatcher_id, "error");
+					postDOMEvent(plugin->mInstance, plugin->id, "error");
 			}
 
 			g_string_free(mplayer_output, TRUE);

@@ -194,11 +194,6 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
 							else 
 									instance->monitor_id = 0;
 						}
-						/* argn[i] is the dispatcherid */
-            if (g_ascii_strcasecmp(argn[i], "dispatcherId") == 0){
-							instance->dispatcher_id = 
-								g_strdup_printf("%s", argv[i]);
-						}
             if (g_ascii_strcasecmp(argn[i], "filename") == 0) {
                 item = g_new0(ListItem, 1);
                 g_strlcpy(item->src, argv[i], 4096);

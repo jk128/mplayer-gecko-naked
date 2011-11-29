@@ -237,7 +237,6 @@ class CPlugin {
 
 		/*new dispatcherId and monitorId*/
 		gint monitor_id;
-		gchar *dispatcher_id;
 		
 		/*mplayer control pipe*/
 		gint mplayer_pipe;
