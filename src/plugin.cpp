@@ -563,11 +563,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					(G_SPAWN_SEARCH_PATH), 
 				 	NULL, NULL, &mplayer_pid,
 					&(this->std_in),
-#ifdef STDOUT //display std_out
-					NULL,
-#else							//mute std_out
 					&(this->std_out),
-#endif
 					&(this->std_err), &error);
 
 			printf("ASD\n");
@@ -607,7 +603,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 						this->channel_in, NULL, NULL);
 				g_io_channel_set_close_on_unref(
 						this->channel_in, TRUE);
-			}/*
+			}
 			if( (this->channel_out = 
 						g_io_channel_unix_new(this->std_out))
 					!= NULL){
@@ -615,7 +611,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 						this->channel_out, NULL, NULL);
 				g_io_channel_set_close_on_unref(
 						this->channel_out, TRUE);
-			}*/
+			}
 			if( (this->channel_err = 
 						g_io_channel_unix_new(this->std_err))
 					!= NULL ){
@@ -629,6 +625,10 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 		 	this->err_source_id = g_io_add_watch_full(	
 					this->channel_err, G_PRIORITY_HIGH,
 				 	G_IO_IN, thread_err_reader, this, NULL);
+			/* Add handler for input event on stdout*/
+		 	this->out_source_id = g_io_add_watch_full(	
+					this->channel_out, G_PRIORITY_HIGH,
+				 	G_IO_IN, thread_out_reader, this, NULL);
 
 			/*Start playback */
 			if (this->pipe_ready){
@@ -710,28 +710,38 @@ gboolean thread_out_reader
 			mplayer_output = g_string_new("");
 			status = g_io_channel_read_line_string(
 					source, mplayer_output, NULL, &err);
+#ifdef STDOUT
+			printf("-----std_out-----> %s",
+					mplayer_output->str);
+#endif
 
-						if ( strstr(mplayer_output->str, "A: ") 
+		if ( strstr(mplayer_output->str, "A: ") 
 				== NULL &&
 				strstr(mplayer_output->str, "V: ")
 				== NULL &&
 				strstr(mplayer_output->str, "A-V: ")
 				== NULL ){
-							printf("OUT:%s\n",
-								mplayer_output->str);
-					if (strstr(mplayer_output->str, "EOF code")
-						 != NULL){
-						/* DOM Event video End */
-						postDOMEvent(plugin->mInstance, plugin->id, "error");
-						printf("Video End--> DOM EVENT\n\n");
 
-					}
+#ifdef STDOUT
+					printf("OUT:%s\n",
+						mplayer_output->str);
+#endif
+
+				if (strstr(mplayer_output->str, 
+								"EOF code: 1")!= NULL){
+					printf("\n!!!! --> DOM ERROR FILE END <--!!!!\n");
+					sleep(2);
+					/* DOM Event video End */
+					postDOMEvent(plugin->mInstance, 
+							plugin->id, "error");
+					printf("Video End--> DOM EVENT\n\n");
 			}
-			g_string_free(mplayer_output, TRUE);
+		}
+		g_string_free(mplayer_output, TRUE);
 	}else{
 		printf("source is null\n");
 	}
-
+	printf(" ");//flush stdout, DO NOT REMOVE, it will block the thread
 }
 
 gboolean thread_err_reader
@@ -747,9 +757,10 @@ gboolean thread_err_reader
 			mplayer_output = g_string_new("");
 			status = g_io_channel_read_line_string(
 					source, mplayer_output, NULL, NULL);
+#ifdef STDERR
 			printf("-----std_err-----> %s",
 					mplayer_output->str);
-
+#endif
 			if(strstr(mplayer_output->str, "Failed to open") 
 					!= NULL) {
 					if (strstr(mplayer_output->str, "LIRC")
