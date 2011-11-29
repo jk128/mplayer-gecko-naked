@@ -506,6 +506,10 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			else if (this->monitor_id == 0)
 				argvn[arg++] = g_strdup_printf("qubica"); 
 
+			/*avoid green screen after playback*/
+			argvn[arg++] = g_strdup_printf("-colorkey"); 
+			argvn[arg++] = g_strdup_printf("000000"); 
+
 			argvn[arg++] = g_strdup_printf("-slave"); 
 			argvn[arg++] = g_strdup_printf("-idle");
 			argvn[arg++] = g_strdup_printf("-nograbpointer");
@@ -729,7 +733,6 @@ gboolean thread_out_reader
 
 				if (strstr(mplayer_output->str, 
 								"EOF code: 1")!= NULL){
-					sleep(2);
 					/* DOM Event video End */
 					postDOMEvent(plugin->mInstance, 
 							plugin->id, "end");
@@ -771,19 +774,16 @@ gboolean thread_err_reader
 							strstr(mplayer_output->str, "registry file") 
 							== NULL) {
 					printf("\n!!!! --> DOM ERROR NO FILE <--!!!!\n");
-					sleep(2);
 					postDOMEvent(plugin->mInstance, plugin->id, "error");
 				}
 			}else if(strstr(mplayer_output->str, 
 						"Failed to get a SDP description")!= NULL){
-					sleep(2);
 					postDOMEvent(plugin->mInstance,
 						 	plugin->id, "error");
 					printf("Video Error--> DOM EVENT error\n\n");
 			}else if(strstr(mplayer_output->str,
 						"No stream found to handle url") != NULL){
 					printf("\n!!!! --> DOM ERROR NO STREAM <--!!!!\n");
-					sleep(2);
 					postDOMEvent(plugin->mInstance, plugin->id, "error");
 			}
 
