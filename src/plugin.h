@@ -233,6 +233,9 @@ class CPlugin {
 		gboolean show_fullscreen;
 		gboolean loop;
     gint loopcount;             // 1 infinite 
+		gint verbose;
+		gboolean show_stderr;
+		gboolean show_stdout;
 
 
 		/*new dispatcherId and monitorId*/

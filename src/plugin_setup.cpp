@@ -136,6 +136,20 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
                     instance->show_controls = 0;
                 }
             }
+						/* verbosity: 0-> none; 1-> stderr; 2->stdout+stderr*/
+						if (g_ascii_strcasecmp(argn[i], "verbose") == 0) {
+                if (g_ascii_strcasecmp(argv[i], "1") == 0){
+										printf("Show STDERR\n");
+										instance->show_stderr=TRUE;
+								}else if(g_ascii_strcasecmp(argv[i], "2") == 0){
+										printf("Show STDERR+STDOUT\n");
+										instance->show_stderr=TRUE;
+										instance->show_stdout=TRUE;
+								}else{
+										instance->show_stderr=FALSE;
+										instance->show_stdout=FALSE;
+								}
+						}
 						/* check if window has to be started in fullscreen mode*/
 						if (g_ascii_strcasecmp(argn[i], "fullscreen") == 0) {
                 if (g_ascii_strcasecmp(argv[i], "true") == 0

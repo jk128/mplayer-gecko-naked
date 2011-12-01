@@ -236,6 +236,8 @@ disable_context_menu(FALSE),
 disable_fullscreen(FALSE),
 post_dom_events(FALSE),
 show_fullscreen(FALSE),
+show_stderr(FALSE),
+show_stdout(FALSE),
 event_mediacomplete(NULL),
 event_destroy(NULL),
 event_mousedown(NULL),
@@ -561,6 +563,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			//this->std_out = -1;
 			//this->std_err = -1;
 
+			printf("LAUNCH MPLAYER!!!!\n\n\n");
 			ok = g_spawn_async_with_pipes(NULL, argvn,
 				 	NULL,
 					(GSpawnFlags) 
@@ -570,10 +573,11 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					&(this->std_out),
 					&(this->std_err), &error);
 
-			printf("ASD\n");
 
 			if (ok) {
 					player_launched = TRUE;
+					printf("PLAYER LAUNCHED\n");
+
 			} else {
 					printf("Unable to launch %s: %s\n",
 						 	app_name, error->message);
@@ -581,23 +585,33 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					error = NULL;
 			}
 			g_free(app_name);
-			printf("ASD\n");
+
+#if 0
+	GIVES PROBLEMS ON PLUGIN RELOADING
 
 			/* Unref active channels */
 			if ( this->channel_in  != NULL){
+				printf("In is not NULL\n");
         g_io_channel_unref(this->channel_in);
 				this->channel_in = NULL;
-			}/*
+				printf("In is not NULL\n");
+			}
 			if ( this->channel_out  != NULL){
+				printf("OUT is not NULL\n");
+				//g_io_channel_shutdown(this->channel_out, FALSE, NULL);
         g_io_channel_unref(this->channel_out);
 				this->channel_out = NULL;
+				printf("OUT is not NULL\n");
 			}
 			if ( this->channel_err  != NULL){
-				g_io_channel_shutdown(this->channel_err, FALSE, NULL);
+				printf("ERR is not NULL\n");
+				//g_io_channel_shutdown(this->channel_err, FALSE, NULL);
         g_io_channel_unref(this->channel_err);
 				this->channel_err = NULL;
+				printf("ERR is not NULL\n");
 			}
-			*/
+#endif
+			
 
 			/* create new channels */ 
 			if( (this->channel_in = 
@@ -714,10 +728,10 @@ gboolean thread_out_reader
 			mplayer_output = g_string_new("");
 			status = g_io_channel_read_line_string(
 					source, mplayer_output, NULL, &err);
-#ifdef STDOUT
-			printf("-----std_out-----> %s",
-					mplayer_output->str);
-#endif
+			
+			if (plugin->show_stdout)
+				printf("%s",
+						mplayer_output->str);
 
 		if ( strstr(mplayer_output->str, "A: ") 
 				== NULL &&
@@ -725,11 +739,6 @@ gboolean thread_out_reader
 				== NULL &&
 				strstr(mplayer_output->str, "A-V: ")
 				== NULL ){
-
-#ifdef STDOUT
-					printf("OUT:%s\n",
-						mplayer_output->str);
-#endif
 
 				if (strstr(mplayer_output->str, 
 								"EOF code: 1")!= NULL){
@@ -759,10 +768,11 @@ gboolean thread_err_reader
 			mplayer_output = g_string_new("");
 			status = g_io_channel_read_line_string(
 					source, mplayer_output, NULL, NULL);
-#ifdef STDERR
-			printf("-----std_err-----> %s",
-					mplayer_output->str);
-#endif
+
+			if (plugin->show_stderr)
+				printf("-----std_err-----> %s",
+						mplayer_output->str);
+			
 			if(strstr(mplayer_output->str, "Failed to open") 
 					!= NULL) {
 					if (strstr(mplayer_output->str, "LIRC")
@@ -800,7 +810,18 @@ void CPlugin::shut()
 {
     ListItem *item;
     GList *iter;
-		char *command = g_strdup_printf("stop\n\0");
+		char *log;
+#if  LOG
+			/* Log to file*/
+			FILE *fd;
+#ifdef ME
+			if ( (fd=fopen("/home/jacopo/gecko.log", "w")) == NULL){
+#else 
+			if ( (fd=fopen("/root/gecko.log", "w")) == NULL){
+#endif
+				perror("Unable to open/create file");
+			}
+#endif
 
     acceptdata = FALSE;
     mInitialized = FALSE;
@@ -820,41 +841,66 @@ void CPlugin::shut()
         NPN_GetURL(mInstance, event_destroy, NULL);
     }
 
-
-		/*clean channel and event sources*/
-		 g_source_remove(this->err_source_id);
-
-		 if( this->channel_in != NULL) {
-				 g_io_channel_shutdown(this->channel_in, FALSE, NULL);
-         g_io_channel_unref(this->channel_in);
-         this->channel_in = NULL;
-		 }
-		 /*
-		 if( this->channel_out != NULL) {
-				 g_io_channel_shutdown(this->channel_out, FALSE, NULL);
-         g_io_channel_unref(this->channel_out);
-         this->channel_out = NULL;
-		 }*/
-		 if( this->channel_err != NULL) {
-				 g_io_channel_shutdown(this->channel_err, FALSE, NULL);
-         g_io_channel_unref(this->channel_err);
-         this->channel_err = NULL;
-		 }
+		g_source_remove(this->err_source_id);
+		g_source_remove(this->out_source_id);
 
 		/*tell mplayer to stop playback and then exit*/
 		this->write_to_mplayer(this->channel_in, "stop\n");
 		this->write_to_mplayer(this->channel_in, "quit\n");
+		/*clean channel and event sources*/
+		 g_source_remove(this->err_source_id);
 
 		/*close Mplayer thread*/
 		g_spawn_close_pid(this->mplayer_pid);
 
+#if LOG
+		log = g_strdup_printf("mplayer stopped\n");
+		fwrite (log, 1, strlen(log), fd);
+#endif
 
-		 this->std_in = -1;
-		 this->std_out = -1;
-		 this->std_err = -1;
-     printf("\nshutdown plugin\an\n");
+				
+		 if( this->channel_in != NULL) {
+				g_io_channel_shutdown(this->channel_in, FALSE, NULL);
+        g_io_channel_unref(this->channel_in);
+        this->channel_in = NULL;
+#if LOG
+				log = g_strdup_printf("channel in down\n");
+				fwrite (log, 1, strlen(log), fd);
+#endif
+		 }
+		 if( this->channel_out != NULL) {
+				 g_io_channel_shutdown(this->channel_out, FALSE, NULL);
+         g_io_channel_unref(this->channel_out);
+         this->channel_out = NULL;
+#if LOG
+				log = g_strdup_printf("channel out down\n");
+				fwrite (log, 1, strlen(log), fd);
+#endif
+		 }
+		 if( this->channel_err != NULL) {
+				 g_io_channel_shutdown(this->channel_err, FALSE, NULL);
+         g_io_channel_unref(this->channel_err);
+         this->channel_err = NULL;
+#if LOG
+				log = g_strdup_printf("channel err down\n");
+				fwrite (log, 1, strlen(log), fd);
+#endif
+		 }
 
 
+#if LOG
+		log = g_strdup_printf("mplayer killed\n");
+		fwrite (log, 1, strlen(log), fd);
+#endif
+		//system("pkill -9 mplayer");
+
+		this->std_in = -1;
+		this->std_out = -1;
+		this->std_err = -1;
+    printf("\nshutdown plugin\n");
+#if  LOG
+		fclose(fd);
+#endif
 }
 
 NPBool CPlugin::isInitialized()
