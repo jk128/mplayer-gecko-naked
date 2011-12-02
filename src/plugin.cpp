@@ -518,7 +518,6 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			argvn[arg++] = g_strdup_printf("-nograbpointer");
 			argvn[arg++] = g_strdup_printf("-nomouseinput");
 			if (this->show_fullscreen){
-				printf("GO FULLSCREEN\n\n");
 				argvn[arg++] = g_strdup_printf("-fs");
 			}
 			else{
@@ -564,7 +563,6 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 			//this->std_out = -1;
 			//this->std_err = -1;
 
-			printf("LAUNCH MPLAYER!!!!\n\n\n");
 			ok = g_spawn_async_with_pipes(NULL, argvn,
 				 	NULL,
 					(GSpawnFlags) 
@@ -577,7 +575,6 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 
 			if (ok) {
 					player_launched = TRUE;
-					printf("PLAYER LAUNCHED\n");
 
 			} else {
 					printf("Unable to launch %s: %s\n",
@@ -660,7 +657,7 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 					/*write loadfile command*/
 					this->write_to_mplayer(
 							this->channel_in,
-							g_strdup_printf("loadfile %s\n", item->src)
+							g_strdup_printf("loadfile \"%s\"\n", item->src)
 							);
 
 					if (this->loop){
@@ -695,7 +692,7 @@ int8_t CPlugin::write_to_mplayer(GIOChannel *std_in_channel, char *command)
 
 	if ( std_in_channel != NULL ){
 		cmd =  g_strdup(command); //null-terminate it
-		printf("\nWriting:to mplayer\n --> %s\n",cmd);
+		printf("\n**Writing: %s\n",cmd);
 		status = g_io_channel_write_chars(
 				std_in_channel, cmd, -1, &nbytes, &err);
     g_free(cmd);
@@ -746,7 +743,7 @@ gboolean thread_out_reader
 					/* DOM Event video End */
 					postDOMEvent(plugin->mInstance, 
 							plugin->id, "end");
-					printf("Video End--> DOM EVENT end\n\n");
+					printf("Video End--> DOM EVENT end\n");
 			}
 		}
 		g_string_free(mplayer_output, TRUE);
@@ -771,7 +768,7 @@ gboolean thread_err_reader
 					source, mplayer_output, NULL, NULL);
 
 			if (plugin->show_stderr)
-				printf("-----std_err-----> %s",
+				printf("\n*std_err* %s",
 						mplayer_output->str);
 			
 			if(strstr(mplayer_output->str, "Failed to open") 
@@ -784,17 +781,17 @@ gboolean thread_err_reader
 							== NULL && 
 							strstr(mplayer_output->str, "registry file") 
 							== NULL) {
-					printf("\n!!!! --> DOM ERROR NO FILE <--!!!!\n");
+					printf("No File --> DOM EVENT error\n");
 					postDOMEvent(plugin->mInstance, plugin->id, "error");
 				}
 			}else if(strstr(mplayer_output->str, 
 						"Failed to get a SDP description")!= NULL){
 					postDOMEvent(plugin->mInstance,
 						 	plugin->id, "error");
-					printf("Video Error--> DOM EVENT error\n\n");
+					printf("Video Error--> DOM EVENT error\n");
 			}else if(strstr(mplayer_output->str,
 						"No stream found to handle url") != NULL){
-					printf("\n!!!! --> DOM ERROR NO STREAM <--!!!!\n");
+					printf("Video Error--> DOM EVENT error\n");
 					postDOMEvent(plugin->mInstance, plugin->id, "error");
 			}
 
