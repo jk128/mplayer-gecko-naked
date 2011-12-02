@@ -236,6 +236,7 @@ disable_context_menu(FALSE),
 disable_fullscreen(FALSE),
 post_dom_events(FALSE),
 show_fullscreen(FALSE),
+loop(0),
 show_stderr(FALSE),
 show_stdout(FALSE),
 event_mediacomplete(NULL),
@@ -841,17 +842,20 @@ void CPlugin::shut()
         NPN_GetURL(mInstance, event_destroy, NULL);
     }
 
-		g_source_remove(this->err_source_id);
-		g_source_remove(this->out_source_id);
 
-		/*tell mplayer to stop playback and then exit*/
+
+		/*tell mplayer to stop playback and then exit 
+		 * (mplyer thread is terminated)*/
 		this->write_to_mplayer(this->channel_in, "stop\n");
 		this->write_to_mplayer(this->channel_in, "quit\n");
-		/*clean channel and event sources*/
-		 g_source_remove(this->err_source_id);
 
-		/*close Mplayer thread*/
-		g_spawn_close_pid(this->mplayer_pid);
+		/*busy waiting until mplayer is dead*/
+		while ( (kill(this->mplayer_pid, 0) == 0) &&
+				(errno != ESRCH && errno != EPERM) );
+
+		/*clean channel and event sources*/
+		g_source_remove(this->out_source_id);
+		g_source_remove(this->err_source_id);
 
 #if LOG
 		log = g_strdup_printf("mplayer stopped\n");
@@ -887,17 +891,14 @@ void CPlugin::shut()
 #endif
 		 }
 
-
 #if LOG
 		log = g_strdup_printf("mplayer killed\n");
 		fwrite (log, 1, strlen(log), fd);
 #endif
-		//system("pkill -9 mplayer");
 
 		this->std_in = -1;
 		this->std_out = -1;
 		this->std_err = -1;
-    printf("\nshutdown plugin\n");
 #if  LOG
 		fclose(fd);
 #endif
