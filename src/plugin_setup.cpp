@@ -201,9 +201,9 @@ void new_instance(CPlugin * instance, int16_t argc, char *argn[], char *argv[])
 
 
             if (g_ascii_strcasecmp(argn[i], "monitorId") == 0){
-							if (g_ascii_strcasecmp(argv[i], "1"))
+							if (g_ascii_strcasecmp(argv[i], "1") == 0)
 									instance->monitor_id = 1; 
-							else if (g_ascii_strcasecmp(argv[i], "2"))
+							else if (g_ascii_strcasecmp(argv[i], "2")==0)
 									instance->monitor_id = 2;
 							else 
 									instance->monitor_id = 0;
