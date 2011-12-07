@@ -80,9 +80,9 @@ NPError OSCALL NP_GetEntryPoints(NPPluginFuncs * pFuncs)
 
 #endif                          /* XP_WIN */
 
-const char *NPP_GetMIMEDescription();
+char *NPP_GetMIMEDescription();
 
-const char *NP_GetMIMEDescription()
+char *NP_GetMIMEDescription()
 {
     return NPP_GetMIMEDescription();
 }
