@@ -5,7 +5,7 @@
 /* #undef CURL_ENABLED */
 
 /* always defined to indicate that i18n is enabled */
-#define ENABLE_NLS 1
+/* #undef ENABLE_NLS */
 
 /* GETTEXT package name */
 #define GETTEXT_PACKAGE "gecko-mediaplayer"
@@ -20,7 +20,7 @@
 #define HAVE_BIND_TEXTDOMAIN_CODESET 1
 
 /* Define to 1 if you have the `dcgettext' function. */
-#define HAVE_DCGETTEXT 1
+/* #undef HAVE_DCGETTEXT */
 
 /* Define to 1 to use GConf to store preferences */
 /* #undef HAVE_GCONF */
@@ -41,7 +41,7 @@
 #define HAVE_MEMORY_H 1
 
 /* Define to 1 if using libxul 1.9.2 or higher */
-#define HAVE_NEW_XULRUNNER 1
+/* #undef HAVE_NEW_XULRUNNER */
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1

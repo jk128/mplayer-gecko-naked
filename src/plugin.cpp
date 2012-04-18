@@ -659,7 +659,16 @@ NPError CPlugin::SetWindow(NPWindow * aWindow)
 							this->channel_in,
 							g_strdup_printf("loadfile \"%s\"\n", item->src)
 							);
-
+					usleep(500000);
+					this->write_to_mplayer(
+							this->channel_in,
+							g_strdup_printf("pause \n", item->src)
+							);
+					postDOMEvent(plugin->instance, plugin->id, "start_playback");
+					this->write_to_mplayer(
+							this->channel_in,
+							g_strdup_printf("pause \n", item->src)
+							);
 					if (this->loop){
 						int new_pid = fork();
 						if (new_pid == 0){
